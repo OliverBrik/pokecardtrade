@@ -24,6 +24,7 @@
 
 ## Change Guidelines
 
+- Always use tailwindcss for styling 
 - Prefer small, focused changes that follow the existing Vue and CSS patterns.
 - Do not change Firebase security rules or deployment configuration without verifying the intended access model.
 - Run the narrowest relevant check after changes, then run `npm run build` when the application code changes.
