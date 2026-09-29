@@ -1,2 +1,11 @@
 @import './base.css';
 @import "tailwindcss";
+
+@theme {
+	--color-ink: #10151e;
+	--color-panel: #19222e;
+	--color-linen: #f5f0e8;
+	--color-apricot: #f3af83;
+	--color-lilac: #bdb2f4;
+	--color-mint: #90cbb9;
+}
