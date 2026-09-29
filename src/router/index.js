@@ -3,12 +3,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { auth } from '../firebase.js';
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
-import { meta } from 'eslint-plugin-vue';
+import adminView from '../views/adminView.vue'
 
 function waitforAuthState() {
   return new Promise((resolve) => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      stopWatching()
+      unsubscribe()
       resolve(user)
     })
   })
