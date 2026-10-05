@@ -10,10 +10,15 @@
           <h1 class="text-3xl font-bold tracking-tight text-linen sm:text-4xl">Admin dashboard</h1>
           <p class="mt-2 text-sm text-linen/55">Manage the users in your trading community.</p>
         </div>
-        <button class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-panel px-4 py-2.5 text-sm font-semibold text-linen transition hover:border-lilac hover:text-lilac focus:outline-none focus:ring-2 focus:ring-lilac/50 disabled:cursor-not-allowed disabled:opacity-50" type="button" @click="loadUsers" :disabled="isLoading || isSaving">
-          <span v-if="isLoading" class="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-linen/30 border-t-linen"></span>
-          {{ isLoading ? 'Refreshing…' : 'Refresh users' }}
-        </button>
+        <div class="flex flex-wrap gap-3">
+          <button class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-panel px-4 py-2.5 text-sm font-semibold text-linen transition hover:border-lilac hover:text-lilac focus:outline-none focus:ring-2 focus:ring-lilac/50 disabled:cursor-not-allowed disabled:opacity-50" type="button" @click="loadUsers" :disabled="isLoading || isSaving || isLoggingOut">
+            <span v-if="isLoading" class="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-linen/30 border-t-linen"></span>
+            {{ isLoading ? 'Refreshing…' : 'Refresh users' }}
+          </button>
+          <button class="inline-flex items-center justify-center rounded-xl border border-apricot/30 px-4 py-2.5 text-sm font-semibold text-apricot transition hover:bg-apricot/10 focus:outline-none focus:ring-2 focus:ring-apricot/50 disabled:cursor-not-allowed disabled:opacity-50" type="button" @click="logout" :disabled="isLoggingOut">
+            {{ isLoggingOut ? 'Signing out…' : 'Sign out' }}
+          </button>
+        </div>
       </header>
 
       <div class="mb-6 grid gap-4 sm:grid-cols-3">
@@ -57,7 +62,14 @@
 </template>
 
 <script setup>
+import { ref } from "vue";
+import { signOut } from "firebase/auth";
+import { useRouter } from "vue-router";
 import { useAdminUsers } from "../composables/useAdminUsers";
+import { auth } from "../firebase";
+
+const router = useRouter();
+const isLoggingOut = ref(false);
 
 // step 1: get reactive state and CRUD actions from one composable
 const {
@@ -76,4 +88,17 @@ const {
   cancelEditing,
   deleteUser,
 } = useAdminUsers();
+
+const logout = async () => {
+  isLoggingOut.value = true;
+
+  try {
+    await signOut(auth);
+    await router.push("/login");
+  } catch (error) {
+    errorMessage.value = error.message;
+  } finally {
+    isLoggingOut.value = false;
+  }
+};
 </script>
