@@ -26,12 +26,16 @@
       <div class="p-7 sm:p-10">
         <div v-if="!isSignedIn">
           <div class="mb-8">
-            <p class="mb-2 text-sm font-semibold text-apricot">Welcome back</p>
-            <h2 class="text-3xl font-bold tracking-tight text-linen">Sign in to trade</h2>
-            <p class="mt-2 text-sm text-linen/55">Enter your details to access your collection.</p>
+            <p class="mb-2 text-sm font-semibold text-apricot">{{ isRegistering ? 'Join the community' : 'Welcome back' }}</p>
+            <h2 class="text-3xl font-bold tracking-tight text-linen">{{ isRegistering ? 'Create your profile' : 'Sign in to trade' }}</h2>
+            <p class="mt-2 text-sm text-linen/55">{{ isRegistering ? 'Create an account to start collecting and trading.' : 'Enter your details to access your collection.' }}</p>
           </div>
 
           <form class="space-y-5" @submit.prevent="login">
+            <div v-if="isRegistering">
+              <label class="mb-2 block text-sm font-medium text-linen/80" for="display-name">Display name</label>
+              <input id="display-name" v-model="displayName" class="w-full rounded-xl border border-white/10 bg-ink/60 px-4 py-3 text-linen outline-none transition placeholder:text-linen/30 focus:border-lilac focus:ring-2 focus:ring-lilac/20" autocomplete="name" placeholder="KortMads" required type="text" />
+            </div>
             <div>
               <label class="mb-2 block text-sm font-medium text-linen/80" for="email">Email address</label>
               <input
@@ -73,9 +77,12 @@
               type="submit"
             >
               <span v-if="isLoading" class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-ink/30 border-t-ink"></span>
-              {{ isLoading ? 'Signing in…' : 'Sign in' }}
+              {{ isLoading ? (isRegistering ? 'Creating account…' : 'Signing in…') : (isRegistering ? 'Create account' : 'Sign in') }}
             </button>
           </form>
+          <button class="mt-5 w-full text-sm font-semibold text-lilac hover:text-linen" type="button" @click="toggleMode">
+            {{ isRegistering ? 'Already have an account? Sign in' : 'Need an account? Create one' }}
+          </button>
         </div>
 
         <div v-else class="flex min-h-80 flex-col justify-center">
@@ -100,12 +107,15 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from 'vue-router';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 
 const email = ref('');
 const password = ref('');
+const displayName = ref('');
+const isRegistering = ref(false);
 const currentUser = ref(auth.currentUser);
 const isLoading = ref(false);
 const errorMessage = ref('');
@@ -122,9 +132,23 @@ const login = async() => {
     isLoading.value = true;
 
     try {
-        await signInWithEmailAndPassword(auth, email.value, password.value)
+        let credential
+
+        if (isRegistering.value) {
+            credential = await createUserWithEmailAndPassword(auth, email.value, password.value)
+            await setDoc(doc(db, 'profiles', credential.user.uid), {
+                displayName: displayName.value.trim(),
+                email: email.value,
+                location: '',
+                bio: '',
+                createdAt: serverTimestamp(),
+            })
+        } else {
+            credential = await signInWithEmailAndPassword(auth, email.value, password.value)
+        }
         password.value = ''
-        await router.push('/admin')
+        const tokenResult = await credential.user.getIdTokenResult(true)
+        await router.push(tokenResult.claims.admin === true ? '/admin' : '/profile')
     }
 
     catch (error) {
@@ -134,6 +158,11 @@ const login = async() => {
     finally {
         isLoading.value = false
     }
+}
+
+const toggleMode = () => {
+    isRegistering.value = !isRegistering.value
+    errorMessage.value = ''
 }
 
 const logout = async () => {
@@ -153,8 +182,13 @@ const logout = async () => {
 }
 
 onMounted(() => {
-    stopWatchingAuth = onAuthStateChanged(auth, (user) => {
+    stopWatchingAuth = onAuthStateChanged(auth, async (user) => {
         currentUser.value = user;
+
+        if (user && !isLoading.value) {
+            const tokenResult = await user.getIdTokenResult(true)
+            await router.push(tokenResult.claims.admin === true ? '/admin' : '/profile')
+        }
     })
 }); 
 
