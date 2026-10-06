@@ -1,5 +1,3 @@
-// TCGdex supplies card information and Cardmarket prices. No API key is needed.
-// Views/composables handle loading states and catch errors from this service.
 const API_URL = 'https://api.tcgdex.net/v2/en'
 
 async function request(path, signal) {
@@ -28,7 +26,6 @@ function cardSummary(card) {
   }
 }
 
-// Missing prices must stay null: unknown is not the same as a value of zero.
 function priceOrNull(value) {
   return Number.isFinite(value) && value >= 0 ? value : null
 }
@@ -41,7 +38,6 @@ function cardmarketPrices(market) {
     currency: 'EUR',
     updatedAt: market.updated ?? null,
     productId: market.idProduct ?? null,
-    // Preserve the provider's two price groups; never substitute one for the other.
     trend: priceOrNull(market.trend),
     average: priceOrNull(market.avg),
     low: priceOrNull(market.low),
@@ -51,7 +47,6 @@ function cardmarketPrices(market) {
   }
 }
 
-/** Get a card by its TCGdex ID, including EUR prices (or null when unavailable). */
 export async function getCard(cardId, { signal } = {}) {
   if (typeof cardId !== 'string' || !cardId.trim()) {
     throw new TypeError('Enter a card ID, for example swsh3-136.')
@@ -65,7 +60,6 @@ export async function getCard(cardId, { signal } = {}) {
     rarity: card.rarity ?? null,
     variants: card.variants ?? {},
     prices: cardmarketPrices(card.pricing?.cardmarket),
-    // Keep explicit variant IDs for collection entries and future variant selection.
     detailedVariants: (card.variants_detailed ?? []).map((variant) => ({
       id: variant.variantId,
       type: variant.type,
@@ -75,7 +69,6 @@ export async function getCard(cardId, { signal } = {}) {
   }
 }
 
-/** Search summaries only. Call getCard(id) separately to obtain prices. */
 export async function searchCards(name, { page = 1, pageSize = 20, signal } = {}) {
   if (typeof name !== 'string') throw new TypeError('Search text must be a string.')
   if (!name.trim()) return []
@@ -93,4 +86,25 @@ export async function searchCards(name, { page = 1, pageSize = 20, signal } = {}
   })
   const cards = await request(`/cards?${query}`, signal)
   return cards.map(cardSummary)
+}
+
+export async function browseCards({ name = '', set = '', rarity = '', number = '', page = 1, signal } = {}) {
+  if (!Number.isInteger(page) || page < 1) throw new RangeError('Invalid page.')
+  const query = new URLSearchParams({
+    'pagination:page': String(page),
+    'pagination:itemsPerPage': '10',
+  })
+  if (name.trim()) query.set('name', `like:${name.trim()}`)
+  if (set) query.set('set.id', `eq:${set}`)
+  if (rarity) query.set('rarity', `eq:${rarity}`)
+  if (number.trim()) query.set('localId', `eq:${number.trim()}`)
+  return (await request(`/cards?${query}`, signal)).map(cardSummary)
+}
+
+export function getSets({ signal } = {}) {
+  return request('/sets', signal)
+}
+
+export function getRarities({ signal } = {}) {
+  return request('/rarities', signal)
 }
