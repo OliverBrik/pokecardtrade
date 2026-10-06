@@ -5,7 +5,6 @@ import AppNavigation from './components/AppNavigation.vue'
 
 <template>
   <AppNavigation />
-  <AppNavigation profile-to="/profile" />
 
   <RouterView />
 </template>
