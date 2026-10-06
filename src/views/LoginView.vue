@@ -109,7 +109,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { auth, db } from '../firebase';
 
 const email = ref('');
@@ -121,6 +121,12 @@ const isLoading = ref(false);
 const errorMessage = ref('');
 
 const router = useRouter();
+const route = useRoute();
+const destination = (isAdmin) => {
+    const redirect = route.query.redirect
+    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//') && router.resolve(redirect).matched.length && router.resolve(redirect).name !== 'login') return redirect
+    return isAdmin ? '/admin' : '/profile'
+}
 
 let stopWatchingAuth;
 
@@ -148,7 +154,7 @@ const login = async() => {
         }
         password.value = ''
         const tokenResult = await credential.user.getIdTokenResult(true)
-        await router.push(tokenResult.claims.admin === true ? '/admin' : '/profile')
+        await router.push(destination(tokenResult.claims.admin === true))
     }
 
     catch (error) {
@@ -187,7 +193,7 @@ onMounted(() => {
 
         if (user && !isLoading.value) {
             const tokenResult = await user.getIdTokenResult(true)
-            await router.push(tokenResult.claims.admin === true ? '/admin' : '/profile')
+            await router.push(destination(tokenResult.claims.admin === true))
         }
     })
 }); 

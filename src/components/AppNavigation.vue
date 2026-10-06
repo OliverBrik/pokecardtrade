@@ -8,7 +8,7 @@ defineProps({
     type: Array,
     default: () => [
       { label: 'Explore', to: '/' },
-      { label: 'My collection', to: null },
+      { label: 'My collection', to: '/my-collection' },
       { label: 'Marketplace', to: null },
       { label: 'Trading', to: null },
     ],
@@ -44,12 +44,7 @@ function closeMenu(event) {
         class="flex shrink-0 items-center gap-6 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot"
         @click="menuOpen = false"
       >
-        <slot name="logo">
-          <span
-            aria-hidden="true"
-            class="flex h-8 w-8 items-center justify-center rounded-sm border border-dashed border-apricot/70 bg-apricot/5 text-[8px] font-semibold uppercase tracking-wider text-apricot"
-          >Logo</span>
-        </slot>
+
         <span class="text-[28px] font-bold leading-none tracking-tight">kardvia</span>
       </RouterLink>
 
@@ -78,6 +73,7 @@ function closeMenu(event) {
             <RouterLink
               v-if="link.to"
               :to="link.to"
+              :class="route.path === link.to ? 'font-bold text-apricot' : 'text-linen/80'"
               class="block rounded-sm py-2 text-base whitespace-nowrap transition-colors hover:text-apricot focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot"
               @click="menuOpen = false"
             >{{ link.label }}</RouterLink>

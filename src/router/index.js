@@ -5,6 +5,7 @@ import ExploreView from '../views/ExploreView.vue'
 import LoginView from '../views/LoginView.vue'
 import adminView from '../views/adminView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import MyCollectionView from '../views/MyCollectionView.vue'
 
 function waitforAuthState() {
   return new Promise((resolve) => {
@@ -18,6 +19,12 @@ function waitforAuthState() {
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/my-collection',
+      name: 'my-collection',
+      component: MyCollectionView,
+      meta: { requiresAuth: true },
+    },
     {
       path: '/',
       name: 'explore',

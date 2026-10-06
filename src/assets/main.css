@@ -1,6 +1,29 @@
 @import './base.css';
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Kardvia Inter';
+  src: url('./fonts/inter-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kardvia Inter';
+  src: url('./fonts/inter-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kardvia Space';
+  src: url('./fonts/space-grotesk-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@layer utilities {
+  .collection-page { font-family: 'Kardvia Inter', sans-serif; }
+  .display-font { font-family: 'Kardvia Space', sans-serif; }
+}
+
 @theme {
 	--color-ink: #10151e;
 	--color-panel: #19222e;

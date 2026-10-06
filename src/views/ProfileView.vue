@@ -99,7 +99,7 @@
         <aside class="space-y-6">
           <section class="rounded-2xl border border-white/10 bg-panel/85 p-6">
             <h2 class="text-lg font-bold text-linen">My cards</h2>
-            <p class="mt-4 text-sm font-semibold text-apricot">My collection →</p>
+            <RouterLink to="/my-collection" class="mt-4 block text-sm font-semibold text-apricot hover:underline">My collection →</RouterLink>
             <div class="mt-3 flex items-center justify-between text-sm text-linen/55">
               <span>Listings (0)</span>
               <span>Trade cards (0)</span>
@@ -140,7 +140,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { signOut } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { auth, db } from '../firebase'
 
 const router = useRouter()

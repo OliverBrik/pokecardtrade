@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { browseCards, getCard, getRarities, getSets } from '@/services/cards'
 import collectorOrbits from '@/assets/figma/collector-orbits.svg'
+import SaveCardActions from '@/components/SaveCardActions.vue'
 
 const featuredIds = ['sv03-223', 'sv03.5-025', 'swsh11-066', 'swsh7-94', 'sv03.5-009', 'sv03.5-151', 'sv03.5-133', 'swsh7-110', 'sv03.5-143', 'sv03.5-003']
 const name = ref('')
@@ -256,6 +257,7 @@ onBeforeUnmount(() => {
               <p class="text-sm text-mint">Cardmarket · EUR</p>
               <p class="mt-4 text-xs text-[#b4becc]">Updated: {{ updatedLabel(selected.prices?.updatedAt) }}</p>
               <p class="mt-5 text-sm leading-relaxed text-[#b4becc]">A guide price, not a sale offer. Check the printing and price group; condition and language can affect value.</p>
+              <SaveCardActions :key="selected.id" :card="selected" />
             </template>
           </div>
         </div>

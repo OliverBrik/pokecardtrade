@@ -8,6 +8,33 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && (request.auth.uid == userId || request.auth.token.admin == true);
       allow delete: if false;
+
+      // Collection entries and wishlist are private, including for administrators.
+      match /collection/{entryId} {
+        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'quantity', 'variant', 'language', 'condition', 'forTrade', 'createdAt', 'updatedAt'])
+          && request.resource.data.cardId is string
+          && request.resource.data.name is string
+          && request.resource.data.quantity is int
+          && request.resource.data.quantity > 0 && request.resource.data.quantity <= 9999
+          && request.resource.data.variant is string
+          && request.resource.data.variant.size() > 0
+          && request.resource.data.language in ['English', 'Japanese', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Korean', 'Chinese']
+          && request.resource.data.condition in ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged']
+          && request.resource.data.forTrade is bool
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      match /wishlist/{cardId} {
+        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'createdAt'])
+          && request.resource.data.cardId == cardId
+          && request.resource.data.name is string
+          && request.resource.data.createdAt == request.time;
+      }
     }
 
     match /users/{userId} {
