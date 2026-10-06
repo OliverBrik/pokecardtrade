@@ -4,6 +4,7 @@ import { auth } from '../firebase.js';
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import adminView from '../views/adminView.vue'
+import ProfileView from '../views/ProfileView.vue'
 
 function waitforAuthState() {
   return new Promise((resolve) => {
@@ -33,6 +34,11 @@ const router = createRouter({
       component: adminView, 
       meta: { requiresAuth: true },
     },
+      {
+        path: '/profile',
+        name: 'profile',
+        component: ProfileView,
+      },
   ],
 })
 

@@ -9,10 +9,10 @@ import { RouterLink, RouterView } from 'vue-router'
       <nav>
         <RouterLink class="text-sm font-semibold text-linen" to="/">Home</RouterLink>
         <RouterLink class="text-sm font-semibold text-linen" to="/login">Login</RouterLink>
+        <RouterLink class="text-sm font-semibold text-linen" to="/profile">Profil</RouterLink>
       </nav>
     </div>
   </header>
 
   <RouterView />
 </template>
-
