@@ -117,7 +117,7 @@ const createAccount = async () => {
     accountForm.value = { displayName: "", email: "", password: "" };
   } catch (error) {
     accountError.value = true;
-    accountMessage.value = error.message;
+    accountMessage.value = error.details || error.message || "The account could not be created.";
   } finally {
     isCreatingAccount.value = false;
   }

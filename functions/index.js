@@ -41,6 +41,14 @@ exports.createUserAccount = onCall(async (request) => {
     if (error.code === 'auth/email-already-exists') {
       throw new HttpsError('already-exists', 'An account with this email already exists.')
     }
-    throw new HttpsError('internal', 'The user account could not be created.')
+    if (error.code === 'auth/invalid-password') {
+      throw new HttpsError('invalid-argument', 'Password must contain at least six characters.')
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new HttpsError('invalid-argument', 'A valid email address is required.')
+    }
+
+    console.error('createUserAccount failed', error)
+    throw new HttpsError('internal', 'The user account could not be created. Check the deployed Firebase Function logs.')
   }
 })
