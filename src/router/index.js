@@ -38,8 +38,28 @@ const router = createRouter({
         path: '/profile',
         name: 'profile',
         component: ProfileView,
+        meta: { requiresAuth: true },
       },
   ],
+})
+
+router.beforeEach(async (to) => {
+  const user = await waitforAuthState()
+  if (!user) {
+    if (to.meta.requiresAuth) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    return true
+  }
+
+  const tokenResult = await user.getIdTokenResult(true)
+  const isAdmin = tokenResult.claims.admin === true
+
+  if (isAdmin && (to.name === 'profile' || to.name === 'login')) {
+    return { name: 'admin' }
+  }
+
+  return true
 })
 
 export default router
