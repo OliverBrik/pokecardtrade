@@ -101,7 +101,7 @@
             <h2 class="text-lg font-bold text-linen">My cards</h2>
             <RouterLink to="/my-collection" class="mt-4 block text-sm font-semibold text-apricot hover:underline">My collection →</RouterLink>
             <div class="mt-3 flex items-center justify-between text-sm text-linen/55">
-              <span>Listings (0)</span>
+              <RouterLink to="/marketplace?tab=mine" class="hover:text-apricot">Listings ({{ listingCount }})</RouterLink>
               <span>Trade cards (0)</span>
             </div>
           </section>
@@ -142,8 +142,10 @@ import { signOut } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { RouterLink, useRouter } from 'vue-router'
 import { auth, db } from '../firebase'
+import { listListings } from '@/services/marketplace'
 
 const router = useRouter()
+const listingCount = ref('—')
 const profile = reactive({ displayName: '', location: '', bio: '', createdAt: null })
 const editForm = reactive({ displayName: '', location: '', bio: '' })
 const isEditing = ref(false)
@@ -191,5 +193,8 @@ const signOutUser = async () => {
   }
 }
 
-onMounted(loadProfile)
+onMounted(() => {
+  loadProfile()
+  listListings(true).then(listings => { listingCount.value = listings.filter(listing => listing.status === 'active').length }).catch(() => { listingCount.value = '—' })
+})
 </script>

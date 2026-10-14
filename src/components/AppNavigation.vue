@@ -9,11 +9,11 @@ defineProps({
     default: () => [
       { label: 'Explore', to: '/' },
       { label: 'My collection', to: '/my-collection' },
-      { label: 'Marketplace', to: null },
+      { label: 'Marketplace', to: '/marketplace' },
       { label: 'Trading', to: null },
     ],
   },
-  messagesTo: { type: [String, Object], default: null },
+  messagesTo: { type: [String, Object], default: '/messages' },
   profileTo: { type: [String, Object], default: '/login' },
 })
 
@@ -73,7 +73,7 @@ function closeMenu(event) {
             <RouterLink
               v-if="link.to"
               :to="link.to"
-              :class="route.path === link.to ? 'font-bold text-apricot' : 'text-linen/80'"
+              :class="route.path === link.to || (link.to === '/marketplace' && route.path.startsWith('/marketplace/')) ? 'font-bold text-apricot' : 'text-linen/80'"
               class="block rounded-sm py-2 text-base whitespace-nowrap transition-colors hover:text-apricot focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot"
               @click="menuOpen = false"
             >{{ link.label }}</RouterLink>

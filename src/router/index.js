@@ -19,6 +19,11 @@ function waitforAuthState() {
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/marketplace', name: 'marketplace', component: () => import('../views/MarketplaceView.vue') },
+    { path: '/marketplace/create', name: 'create-listing', component: () => import('../views/CreateListingView.vue'), meta: { requiresAuth: true } },
+    { path: '/marketplace/:id/edit', name: 'edit-listing', component: () => import('../views/CreateListingView.vue'), meta: { requiresAuth: true } },
+    { path: '/marketplace/:id', name: 'listing', component: () => import('../views/ListingDetailView.vue') },
+    { path: '/messages', name: 'messages', component: () => import('../views/MessagesView.vue'), meta: { requiresAuth: true } },
     {
       path: '/my-collection',
       name: 'my-collection',

@@ -6,5 +6,5 @@ import AppNavigation from './components/AppNavigation.vue'
 <template>
   <AppNavigation />
 
-  <RouterView />
+  <RouterView :key="$route.path" />
 </template>

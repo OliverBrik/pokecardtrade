@@ -1,6 +1,12 @@
 @import './base.css';
 @import "tailwindcss";
 
+@layer components {
+  .market-field { @apply min-h-12 min-w-0 w-full rounded-[10px] border border-[#3b4a5d] bg-[#222e3d] px-4 py-3 text-sm text-linen focus-visible:outline-2 focus-visible:outline-apricot; }
+  .market-panel { @apply rounded-2xl border border-[#3b4a5d] bg-panel p-6; }
+  .market-button { @apply rounded-[10px] bg-apricot px-5 py-3 text-sm font-bold text-ink hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot disabled:opacity-50; }
+}
+
 @font-face {
   font-family: 'Kardvia Inter';
   src: url('./fonts/inter-regular.ttf') format('truetype');

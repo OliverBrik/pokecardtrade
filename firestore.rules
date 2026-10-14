@@ -2,6 +2,88 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function reservation(uid, entryId) {
+      let path = /databases/$(database)/documents/listings/$(uid + '_' + entryId);
+      return existsAfter(path) && getAfter(path).data.status == 'active';
+    }
+    function validPhoto(photo, uid, listingId) {
+      return photo is map && photo.keys().hasOnly(['path', 'url'])
+        && photo.path is string && photo.path.matches('listingPhotos/' + uid + '/' + listingId + '/[^/]+')
+        && photo.url is string && photo.url.matches('https://firebasestorage.googleapis.com/.*');
+    }
+    function validListing(listingId) {
+      let d = request.resource.data;
+      let entry = getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)/collection/$(d.entryId)).data;
+      return d.keys().hasAll(['sellerId', 'sellerName', 'entryId', 'cardId', 'name', 'image', 'setId', 'setName', 'localId', 'variant', 'language', 'condition', 'quantity', 'priceCents', 'shippingCents', 'currency', 'delivery', 'description', 'photos', 'status', 'createdAt', 'updatedAt'])
+        && d.keys().hasOnly(['sellerId', 'sellerName', 'entryId', 'cardId', 'name', 'image', 'setId', 'setName', 'localId', 'variant', 'language', 'condition', 'quantity', 'priceCents', 'shippingCents', 'currency', 'delivery', 'description', 'photos', 'status', 'createdAt', 'updatedAt'])
+        && d.sellerId == request.auth.uid && d.entryId is string
+        && listingId == d.sellerId + '_' + d.entryId
+        && d.sellerName is string && d.sellerName.size() > 0 && d.sellerName.size() <= 100
+        && d.cardId == entry.cardId && d.name == entry.name && d.image == entry.image
+        && d.setId == entry.setId && d.setName == entry.setName && d.localId == entry.localId
+        && d.variant == entry.variant && d.language == entry.language && d.condition == entry.condition
+        && d.quantity is int && d.quantity > 0 && d.quantity <= entry.quantity
+        && d.priceCents is int && d.priceCents > 0 && d.priceCents <= 100000000
+        && d.shippingCents is int && d.shippingCents >= 0 && d.shippingCents <= 100000000
+        && d.currency == 'EUR' && d.delivery in ['tracked', 'pickup']
+        && (d.delivery != 'pickup' || d.shippingCents == 0)
+        && d.description is string && d.description.size() <= 2000
+        && d.status == 'active' && d.createdAt is timestamp && d.updatedAt == request.time
+        && d.photos is list && d.photos.size() <= 4
+        && (d.photos.size() < 1 || validPhoto(d.photos[0], d.sellerId, listingId))
+        && (d.photos.size() < 2 || validPhoto(d.photos[1], d.sellerId, listingId))
+        && (d.photos.size() < 3 || validPhoto(d.photos[2], d.sellerId, listingId))
+        && (d.photos.size() < 4 || validPhoto(d.photos[3], d.sellerId, listingId));
+    }
+    match /listings/{listingId} {
+      allow get: if !exists(/databases/$(database)/documents/listings/$(listingId)) || resource.data.status == 'active' || owner(resource.data.sellerId);
+      allow list: if resource.data.status == 'active' || owner(resource.data.sellerId);
+      allow create: if request.auth != null && validListing(listingId) && request.resource.data.createdAt == request.time;
+      allow update: if owner(resource.data.sellerId)
+        && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.entryId == resource.data.entryId
+        && (
+          (request.resource.data.status == 'active' && validListing(listingId) && (resource.data.status != 'active' || request.resource.data.createdAt == resource.data.createdAt))
+          || (resource.data.status == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.status in ['sold', 'withdrawn'] && request.resource.data.updatedAt == request.time
+            && (request.resource.data.status == 'withdrawn' || soldQuantityRemoved(resource.data)))
+        );
+      allow delete: if false;
+    }
+    function soldQuantityRemoved(listing) {
+      let path = /databases/$(database)/documents/profiles/$(listing.sellerId)/collection/$(listing.entryId);
+      return exists(path) && (get(path).data.quantity == listing.quantity
+        ? !existsAfter(path)
+        : existsAfter(path) && getAfter(path).data.quantity == get(path).data.quantity - listing.quantity);
+    }
+    match /inquiries/{inquiryId} {
+      allow get: if request.auth != null && (!exists(/databases/$(database)/documents/inquiries/$(inquiryId)) || request.auth.uid in resource.data.participants);
+      allow list: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['listingId', 'cardName', 'buyerId', 'sellerId', 'participants', 'createdAt', 'updatedAt'])
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.buyerId != request.resource.data.sellerId
+        && request.resource.data.participants == [request.auth.uid, request.resource.data.sellerId]
+        && inquiryId == request.resource.data.listingId + '_' + request.auth.uid
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.sellerId == request.resource.data.sellerId
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.name == request.resource.data.cardName
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.status == 'active'
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt']) && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+      match /messages/{messageId} {
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/inquiries/$(inquiryId)).data.participants;
+        allow create: if request.auth != null && request.auth.uid in getAfter(/databases/$(database)/documents/inquiries/$(inquiryId)).data.participants
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
     match /profiles/{userId} {
       allow read: if request.auth != null
         && (request.auth.uid == userId || request.auth.token.admin == true);
@@ -11,7 +93,8 @@ service cloud.firestore {
 
       // Collection entries and wishlist are private, including for administrators.
       match /collection/{entryId} {
-        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow read: if owner(userId);
+        allow delete: if owner(userId) && !reservation(userId, entryId);
         allow create, update: if request.auth != null && request.auth.uid == userId
           && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'quantity', 'variant', 'language', 'condition', 'forTrade', 'createdAt', 'updatedAt'])
           && request.resource.data.cardId is string
@@ -24,7 +107,11 @@ service cloud.firestore {
           && request.resource.data.condition in ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged']
           && request.resource.data.forTrade is bool
           && request.resource.data.createdAt is timestamp
-          && request.resource.data.updatedAt == request.time;
+          && request.resource.data.updatedAt == request.time
+          && (!reservation(userId, entryId) || (
+            request.resource.data.quantity >= getAfter(/databases/$(database)/documents/listings/$(userId + '_' + entryId)).data.quantity
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity', 'forTrade', 'updatedAt'])
+          ));
       }
 
       match /wishlist/{cardId} {
