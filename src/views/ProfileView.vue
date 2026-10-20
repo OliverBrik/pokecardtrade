@@ -30,9 +30,9 @@
               <button class="rounded-xl bg-apricot px-4 py-2.5 text-sm font-bold text-ink transition hover:bg-apricot/90 focus:outline-none focus:ring-2 focus:ring-apricot/50" type="button" @click="isEditing = !isEditing">
                 Edit profile
               </button>
-              <button class="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-linen transition hover:border-lilac hover:text-lilac focus:outline-none focus:ring-2 focus:ring-lilac/50">
+              <RouterLink :to="`/collectors/${auth.currentUser?.uid}`" class="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-linen transition hover:border-lilac hover:text-lilac focus:outline-none focus:ring-2 focus:ring-lilac/50">
                 View public profile
-              </button>
+              </RouterLink>
               <button
                 v-if="isAdminAccount"
                 class="rounded-xl border border-lilac/30 px-4 py-2.5 text-sm font-semibold text-lilac transition hover:bg-lilac/10 focus:outline-none focus:ring-2 focus:ring-lilac/50"
@@ -49,6 +49,13 @@
               <label class="text-sm font-medium text-linen/80">Display name<input v-model="editForm.displayName" class="mt-2 w-full rounded-xl border border-white/10 bg-ink/60 px-4 py-3 text-linen outline-none focus:border-lilac" required type="text" /></label>
               <label class="text-sm font-medium text-linen/80">Location<input v-model="editForm.location" class="mt-2 w-full rounded-xl border border-white/10 bg-ink/60 px-4 py-3 text-linen outline-none focus:border-lilac" type="text" /></label>
               <label class="text-sm font-medium text-linen/80 sm:col-span-2">Bio<textarea v-model="editForm.bio" class="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-ink/60 px-4 py-3 text-linen outline-none focus:border-lilac" maxlength="280"></textarea></label>
+              <fieldset class="space-y-3 rounded-xl bg-ink/60 p-4 text-sm sm:col-span-2">
+                <legend class="px-2 font-bold">Public visibility</legend>
+                <label class="flex items-center gap-3"><input v-model="editForm.publicProfile" type="checkbox" /> Publish my display name, location and bio</label>
+                <label class="flex items-center gap-3"><input v-model="editForm.collectionPublic" type="checkbox" :disabled="!editForm.publicProfile" /> Make my entire collection public</label>
+                <label class="flex items-center gap-3"><input v-model="editForm.tradesPublic" type="checkbox" :disabled="!editForm.publicProfile || editForm.collectionPublic" /> Share only cards marked for trade when my collection is private</label>
+                <p class="text-xs leading-5 text-linen/60">Public cards include quantities, variants, condition and language. Your wishlist and account email stay private. Active sale listings remain public.</p>
+              </fieldset>
               <p v-if="profileError" class="text-sm text-red-200 sm:col-span-2" role="alert">{{ profileError }}</p>
               <button class="rounded-xl bg-lilac px-4 py-3 font-bold text-ink sm:col-span-2" :disabled="isSaving" type="submit">{{ isSaving ? 'Saving…' : 'Save profile' }}</button>
             </form>
@@ -126,7 +133,7 @@
                 <span class="text-linen/55">Notifications</span>
                 <span class="text-linen/30">→</span>
               </div>
-              <p class="font-semibold text-apricot">Profile visibility and privacy →</p>
+              <button type="button" class="font-semibold text-apricot" @click="isEditing = true">Profile visibility and privacy →</button>
               <p class="text-xs leading-5 text-linen/40">Your address and contact details are not shown publicly.</p>
             </div>
           </section>
@@ -139,15 +146,16 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { signOut } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { RouterLink, useRouter } from 'vue-router'
 import { auth, db } from '../firebase'
 import { listListings } from '@/services/marketplace'
+import { getPublicProfile, saveProfileDetails } from '@/services/profiles'
 
 const router = useRouter()
 const listingCount = ref('—')
 const profile = reactive({ displayName: '', location: '', bio: '', createdAt: null })
-const editForm = reactive({ displayName: '', location: '', bio: '' })
+const editForm = reactive({ displayName: '', location: '', bio: '', publicProfile: false, collectionPublic: false, tradesPublic: false })
 const isEditing = ref(false)
 const isSaving = ref(false)
 const isSigningOut = ref(false)
@@ -161,6 +169,10 @@ const loadProfile = async () => {
   const snapshot = await getDoc(doc(db, 'profiles', auth.currentUser.uid))
   if (snapshot.exists()) Object.assign(profile, snapshot.data())
   Object.assign(editForm, profile)
+  const published = await getPublicProfile(auth.currentUser.uid)
+  editForm.publicProfile = !!published
+  editForm.collectionPublic = published?.collectionPublic === true
+  editForm.tradesPublic = published?.tradesPublic === true
 }
 
 const saveProfile = async () => {
@@ -169,7 +181,7 @@ const saveProfile = async () => {
   profileError.value = ''
   try {
     const values = { displayName: editForm.displayName.trim(), location: editForm.location.trim(), bio: editForm.bio.trim() }
-    await setDoc(doc(db, 'profiles', auth.currentUser.uid), values, { merge: true })
+    await saveProfileDetails({ ...editForm, ...values })
     Object.assign(profile, values)
     isEditing.value = false
   } catch (error) {
@@ -194,7 +206,7 @@ const signOutUser = async () => {
 }
 
 onMounted(() => {
-  loadProfile()
+  loadProfile().catch(error => { profileError.value = error.message; isEditing.value = true })
   listListings(true).then(listings => { listingCount.value = listings.filter(listing => listing.status === 'active').length }).catch(() => { listingCount.value = '—' })
 })
 </script>

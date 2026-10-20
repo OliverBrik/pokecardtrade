@@ -84,6 +84,24 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow create, update: if owner(userId)
+        && request.resource.data.keys().hasAll(['displayName', 'location', 'bio', 'collectionPublic', 'tradesPublic', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['displayName', 'location', 'bio', 'collectionPublic', 'tradesPublic', 'updatedAt'])
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() > 0 && request.resource.data.displayName.size() <= 100
+        && request.resource.data.location is string && request.resource.data.location.size() <= 100
+        && request.resource.data.bio is string && request.resource.data.bio.size() <= 280
+        && request.resource.data.collectionPublic is bool
+        && request.resource.data.tradesPublic is bool
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if owner(userId);
+    }
+    function publicCards(uid, entry) {
+      let path = /databases/$(database)/documents/publicProfiles/$(uid);
+      return exists(path) && (get(path).data.collectionPublic == true
+        || (get(path).data.tradesPublic == true && entry.forTrade == true));
+    }
     match /profiles/{userId} {
       allow read: if request.auth != null
         && (request.auth.uid == userId || request.auth.token.admin == true);
@@ -91,9 +109,8 @@ service cloud.firestore {
         && (request.auth.uid == userId || request.auth.token.admin == true);
       allow delete: if false;
 
-      // Collection entries and wishlist are private, including for administrators.
       match /collection/{entryId} {
-        allow read: if owner(userId);
+        allow read: if owner(userId) || publicCards(userId, resource.data);
         allow delete: if owner(userId) && !reservation(userId, entryId);
         allow create, update: if request.auth != null && request.auth.uid == userId
           && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'quantity', 'variant', 'language', 'condition', 'forTrade', 'createdAt', 'updatedAt'])

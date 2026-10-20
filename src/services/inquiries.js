@@ -1,5 +1,47 @@
 import { collection, doc, getDocs, onSnapshot, orderBy, query, runTransaction, serverTimestamp, where } from 'firebase/firestore'
 import { auth, db } from '@/firebase'
+import { calculateBundle } from './bundle'
+import { formatMoney } from './marketplace'
+
+export async function contactSellerBundle(lines) {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Sign in to request a combined purchase.')
+  const estimate = calculateBundle(lines)
+  if (uid === estimate.sellerId) throw new Error('You cannot buy your own cards.')
+  const id = `${lines[0].listing.id}_${uid}`
+  const target = doc(db, 'inquiries', id)
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(target)
+    const snapshots = await Promise.all(lines.map(({ listing }) => transaction.get(doc(db, 'listings', listing.id))))
+    const current = snapshots.map((snapshot, index) => {
+      if (!snapshot.exists()) throw new Error('A listing is no longer available. Refresh the profile.')
+      const listing = { ...snapshot.data(), id: snapshot.id }
+      const previous = lines[index].listing
+      if (['sellerId', 'priceCents', 'shippingCents', 'delivery', 'cardId', 'variant', 'language', 'condition'].some(field => listing[field] !== previous[field])) {
+        throw new Error('A listing has changed. Refresh the profile and review your selection.')
+      }
+      return { listing, quantity: lines[index].quantity }
+    })
+    const total = calculateBundle(current)
+    const text = [
+      'Combined purchase request',
+      ...current.map(({ listing, quantity }) => `${quantity} × ${listing.name} (${listing.setName}, ${listing.localId}, ${listing.variant}, ${listing.language}, ${listing.condition}) — ${formatMoney(listing.priceCents * quantity)}\nListing: /marketplace/${listing.id}`),
+      `Cards: ${formatMoney(total.subtotalCents)}`,
+      total.delivery === 'pickup' ? 'Local pickup: no shipping.' : `Proposed combined shipping: ${formatMoney(total.shippingCents)} (highest individual shipping charge).`,
+      `Estimated total: ${formatMoney(total.totalCents)}.`,
+      'Please confirm availability and the final combined delivery cost. This request does not reserve the cards or complete payment.',
+    ].join('\n\n')
+    if (text.length > 2000) throw new Error('This request is too long. Select fewer listings.')
+    if (!existing.exists()) transaction.set(target, {
+      listingId: current[0].listing.id, cardName: current[0].listing.name, buyerId: uid,
+      sellerId: total.sellerId, participants: [uid, total.sellerId],
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    })
+    else transaction.update(target, { updatedAt: serverTimestamp() })
+    transaction.set(doc(collection(target, 'messages')), { senderId: uid, text, createdAt: serverTimestamp() })
+  })
+  return id
+}
 export async function contactSeller(listing, text) {
   if(!auth.currentUser)throw new Error('Sign in to contact the seller.')
   const uid=auth.currentUser.uid
