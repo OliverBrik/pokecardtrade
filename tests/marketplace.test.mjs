@@ -64,6 +64,16 @@ test('another user and a signed-out visitor cannot use seller service operations
   await assert.rejects(service.saveListing('entry',form,[]),/Sign in/)
   service.auth.currentUser={uid:'seller'}
 })
+
+test('selling copies never leaves a trade quantity greater than the remaining collection', async () => {
+  service.records.set(entryPath, { ...entry, forTrade: true, tradeQuantity: 3 })
+  await service.saveListing('entry', form, [])
+  await service.changeListingStatus('seller_entry', 'sold')
+  const remaining = service.records.get(entryPath)
+  assert.equal(remaining.quantity, 1)
+  assert.equal(remaining.tradeQuantity, 1)
+  assert.equal(remaining.forTrade, true)
+})
 test('uploads validate file limits and clean up after download URL failure',async()=>{
   await assert.rejects(service.uploadPhotos('seller_entry',[{type:'image/svg+xml',size:1}]),/JPG/)
   await assert.rejects(service.uploadPhotos('seller_entry',[{type:'image/png',size:6*1024*1024}]),/5 MB/)

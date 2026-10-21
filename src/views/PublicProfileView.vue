@@ -6,6 +6,7 @@ import { getPublicProfile, listPublicCards, listSellerListings } from '@/service
 import { calculateBundle } from '@/services/bundle'
 import { contactSellerBundle } from '@/services/inquiries'
 import { formatMoney } from '@/services/marketplace'
+import { tradeQuantity } from '@/services/collection'
 import ListingCard from '@/components/ListingCard.vue'
 
 const route = useRoute(), router = useRouter()
@@ -154,8 +155,8 @@ watch(() => route.params.uid, () => { tab.value = 'sale'; search.value = ''; loa
             <h2 class="display-font mt-4 text-lg font-bold">{{ entry.name }}</h2>
             <p class="mt-2 text-xs text-linen/60">{{ entry.setName }} · {{ entry.localId }}</p>
             <p class="mt-2 text-sm">{{ entry.variant }} · {{ entry.language }} · {{ entry.condition }}</p>
-            <p class="mt-2 text-sm">Quantity: {{ entry.quantity }}</p>
-            <span v-if="entry.forTrade" class="mt-3 inline-block text-sm text-mint">Available for trade</span>
+            <p class="mt-2 text-sm">Quantity: {{ tab === 'trade' ? tradeQuantity(entry) : entry.quantity }}</p>
+            <span v-if="entry.forTrade" class="mt-3 inline-block text-sm text-mint">{{ tradeQuantity(entry) }} marked for trade</span>
           </article>
         </div>
         <p v-else class="market-panel">No matching cards.</p>

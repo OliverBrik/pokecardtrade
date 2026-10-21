@@ -102,6 +102,34 @@ service cloud.firestore {
       return exists(path) && (get(path).data.collectionPublic == true
         || (get(path).data.tradesPublic == true && entry.forTrade == true));
     }
+    // Consent is private; only callable functions discover participating collectors.
+    match /tradingMembers/{userId} {
+      allow read: if owner(userId);
+      allow create, update: if owner(userId)
+        && request.resource.data.keys().hasAll(['enabled', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['enabled', 'updatedAt'])
+        && request.resource.data.enabled is bool
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if owner(userId);
+    }
+    match /trades/{tradeId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      // Creation, stock checks and transitions run in authenticated callable functions.
+      allow write: if false;
+      match /messages/{messageId} {
+        function participant() {
+          return request.auth != null && request.auth.uid in get(/databases/$(database)/documents/trades/$(tradeId)).data.participants;
+        }
+        allow read: if participant();
+        allow create: if participant()
+          && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
     match /profiles/{userId} {
       allow read: if request.auth != null
         && (request.auth.uid == userId || request.auth.token.admin == true);
@@ -113,7 +141,7 @@ service cloud.firestore {
         allow read: if owner(userId) || publicCards(userId, resource.data);
         allow delete: if owner(userId) && !reservation(userId, entryId);
         allow create, update: if request.auth != null && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'quantity', 'variant', 'language', 'condition', 'forTrade', 'createdAt', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'quantity', 'variant', 'language', 'condition', 'forTrade', 'tradeQuantity', 'createdAt', 'updatedAt'])
           && request.resource.data.cardId is string
           && request.resource.data.name is string
           && request.resource.data.quantity is int
@@ -123,21 +151,28 @@ service cloud.firestore {
           && request.resource.data.language in ['English', 'Japanese', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Korean', 'Chinese']
           && request.resource.data.condition in ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged']
           && request.resource.data.forTrade is bool
+          && (!('tradeQuantity' in request.resource.data) || (
+            request.resource.data.tradeQuantity is int && request.resource.data.tradeQuantity >= 0
+            && request.resource.data.tradeQuantity <= request.resource.data.quantity
+            && request.resource.data.forTrade == (request.resource.data.tradeQuantity > 0)))
           && request.resource.data.createdAt is timestamp
           && request.resource.data.updatedAt == request.time
           && (!reservation(userId, entryId) || (
             request.resource.data.quantity >= getAfter(/databases/$(database)/documents/listings/$(userId + '_' + entryId)).data.quantity
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity', 'forTrade', 'updatedAt'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity', 'forTrade', 'tradeQuantity', 'updatedAt'])
           ));
       }
 
       match /wishlist/{cardId} {
         allow read, delete: if request.auth != null && request.auth.uid == userId;
         allow create, update: if request.auth != null && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['cardId', 'name', 'image', 'localId', 'setId', 'setName', 'createdAt', 'variant', 'language', 'minimumCondition'])
           && request.resource.data.cardId == cardId
           && request.resource.data.name is string
-          && request.resource.data.createdAt == request.time;
+          && (!('variant' in request.resource.data) || request.resource.data.variant in ['', 'normal', 'holo', 'reverse', 'firstEdition', 'wPromo'])
+          && (!('language' in request.resource.data) || request.resource.data.language in ['', 'English', 'Japanese', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Korean', 'Chinese'])
+          && (!('minimumCondition' in request.resource.data) || request.resource.data.minimumCondition in ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'])
+          && (request.resource.data.createdAt == request.time || (resource != null && request.resource.data.createdAt == resource.data.createdAt));
       }
     }
 

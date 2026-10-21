@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { tradeQuantity } from '@/services/collection'
 defineProps({ entry: { type: Object, required: true }, price: { type: String, default: '' }, wishlist: Boolean })
 defineEmits(['manage'])
 const failedImage = ref(false)
@@ -14,6 +15,7 @@ const failedImage = ref(false)
     <h3 class="display-font text-lg font-bold">{{ entry.name }}</h3>
     <p class="text-xs text-[#b4becc]">{{ wishlist ? entry.setName : `${entry.variant} · ${entry.language} · ${entry.condition}` }}</p>
     <p class="display-font mt-auto text-lg font-bold">{{ wishlist ? 'On your wishlist' : `${entry.quantity} ${entry.quantity === 1 ? 'card' : 'cards'} · ${price}` }}</p>
-    <p class="text-[13px] text-apricot">{{ wishlist ? 'Manage wishlist →' : entry.forTrade ? 'For trade · Manage card →' : 'Manage card →' }}</p>
+    <p v-if="wishlist" class="text-xs text-[#b4becc]">{{ entry.variant || 'Any variant' }} · {{ entry.language || 'Any language' }} · {{ !entry.minimumCondition || entry.minimumCondition === 'Damaged' ? 'Any condition' : `${entry.minimumCondition} or better` }}</p>
+    <p class="text-[13px] text-apricot">{{ wishlist ? 'Manage wishlist →' : entry.forTrade ? `${tradeQuantity(entry)} for trade · Manage card →` : 'Manage card →' }}</p>
   </button>
 </template>

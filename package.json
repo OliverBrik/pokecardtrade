@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:marketplace": "node --test tests/marketplace.test.mjs",
+    "test:trading": "node --test tests/trading.test.mjs",
+    "dev:trading-preview": "vite --config tests/trading-preview.config.mjs --host 127.0.0.1 --port 5174",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache"

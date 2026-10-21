@@ -89,7 +89,10 @@ export async function changeListingStatus(id, status) {
     if (status === 'sold') {
       if (!entry.exists() || entry.data().quantity < data.quantity) throw new Error('Check the quantity in your collection before marking this listing as sold.')
       const remaining = entry.data().quantity - data.quantity
-      if (remaining) transaction.update(entryRef, { quantity: remaining, updatedAt: serverTimestamp() })
+      if (remaining) {
+        const trade = entry.data().tradeQuantity
+        transaction.update(entryRef, { quantity: remaining, ...(trade == null ? {} : { tradeQuantity: Math.min(trade, remaining), forTrade: trade > 0 }), updatedAt: serverTimestamp() })
+      }
       else transaction.delete(entryRef)
     }
     transaction.update(target, { status, updatedAt: serverTimestamp() })

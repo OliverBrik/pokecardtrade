@@ -20,6 +20,18 @@ function validate(values) {
   if (typeof values.variant !== 'string' || !values.variant) throw new Error('Choose a card variant.')
 }
 
+export function tradeQuantity(entry) {
+  return entry.forTrade ? Math.min(entry.quantity, entry.tradeQuantity ?? entry.quantity) : 0
+}
+
+function wishlistPreferences(values = {}) {
+  const preferences = { variant: values.variant ?? '', language: values.language ?? '', minimumCondition: values.minimumCondition ?? 'Damaged' }
+  if (!['', 'normal', 'holo', 'reverse', 'firstEdition', 'wPromo'].includes(preferences.variant)
+    || (preferences.language && !languages.includes(preferences.language))
+    || !conditions.includes(preferences.minimumCondition)) throw new Error('Choose valid wishlist preferences.')
+  return preferences
+}
+
 export async function listEntries(kind = 'collection') {
   const snapshot = await getDocs(userCollection(kind))
   return snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }))
@@ -30,21 +42,27 @@ export async function addOwnedCard(card, values) {
   await addDoc(userCollection('collection'), {
     cardId: card.id, name: card.name, image: card.image ?? null,
     localId: card.localId ?? '', setId: card.set?.id ?? '', setName: card.set?.name ?? '',
-    ...values, forTrade: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    ...values, forTrade: false, tradeQuantity: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   })
 }
 
-export async function addWishlistCard(card) {
+export async function addWishlistCard(card, preferences = {}) {
   await setDoc(doc(userCollection('wishlist'), card.id), {
     cardId: card.id, name: card.name, image: card.image ?? null,
     localId: card.localId ?? '', setId: card.set?.id ?? '', setName: card.set?.name ?? '',
-    createdAt: serverTimestamp(),
+    ...wishlistPreferences(preferences), createdAt: serverTimestamp(),
   })
 }
 
 export async function updateEntry(id, values) {
   validate(values)
-  await updateDoc(doc(userCollection('collection'), id), { ...values, updatedAt: serverTimestamp() })
+  const quantity = values.forTrade ? values.tradeQuantity : 0
+  if (!Number.isInteger(quantity) || quantity < 0 || quantity > values.quantity || (values.forTrade && quantity === 0)) throw new Error('Choose a trade quantity between 1 and the number of cards you own.')
+  await updateDoc(doc(userCollection('collection'), id), { ...values, tradeQuantity: quantity, forTrade: quantity > 0, updatedAt: serverTimestamp() })
+}
+
+export async function updateWishlistEntry(id, values) {
+  await updateDoc(doc(userCollection('wishlist'), id), wishlistPreferences(values))
 }
 
 export function removeEntry(id, kind = 'collection') {

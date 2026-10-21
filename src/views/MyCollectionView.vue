@@ -3,9 +3,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import CollectionCard from '@/components/CollectionCard.vue'
 import SaveCardActions from '@/components/SaveCardActions.vue'
+import WishlistPreferences from '@/components/WishlistPreferences.vue'
 import { getCard } from '@/services/cards'
 import { formatMoney, listListings } from '@/services/marketplace'
-import { conditions, entryPrice, languages, listEntries, removeEntry, updateEntry, variantsFor } from '@/services/collection'
+import { conditions, entryPrice, languages, listEntries, removeEntry, tradeQuantity, updateEntry, updateWishlistEntry, variantsFor } from '@/services/collection'
 
 const entries = ref([])
 const listings = ref([])
@@ -24,7 +25,8 @@ const saving = ref(false)
 const error = ref('')
 const warning = ref('')
 const message = ref('')
-const tab = ref('all')
+const tab = ref(['all', 'trade', 'sale', 'wishlist', 'duplicates'].includes(route.query.tab) ? route.query.tab : 'all')
+const wishForm = ref({ variant: '', language: '', minimumCondition: 'Damaged' })
 const search = ref('')
 const set = ref('')
 const sort = ref('recent')
@@ -32,17 +34,18 @@ const selected = ref(null)
 const dialog = ref(null)
 const dialogError = ref('')
 const confirmingRemoval = ref(false)
-const form = reactive({ quantity: 1, variant: 'normal', language: 'English', condition: 'Near Mint', forTrade: false })
+const form = reactive({ quantity: 1, variant: 'normal', language: 'English', condition: 'Near Mint', forTrade: false, tradeQuantity: 0 })
 let controller
 let disposed = false
 const money = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' })
 const price = (entry) => entryPrice(details.value[entry.cardId], entry.variant)
 const priceLabel = (entry) => price(entry) == null ? 'Price unavailable' : `Est. ${money.format(price(entry))} each`
 const quantity = computed(() => entries.value.reduce((total, entry) => total + entry.quantity, 0))
-const trades = computed(() => entries.value.filter((entry) => entry.forTrade).reduce((total, entry) => total + entry.quantity, 0))
+const trades = computed(() => entries.value.reduce((total, entry) => total + tradeQuantity(entry), 0))
+const duplicates = computed(() => entries.value.filter(entry => entry.quantity > 1))
 const priced = computed(() => entries.value.filter((entry) => price(entry) != null))
 const totalValue = computed(() => priced.value.reduce((total, entry) => total + price(entry) * entry.quantity, 0))
-const source = computed(() => tab.value === 'wishlist' ? wishes.value : tab.value === 'sale' ? entries.value.filter(entry => activeListings.value.some(listing => listing.entryId === entry.id)) : tab.value === 'trade' ? entries.value.filter((entry) => entry.forTrade) : entries.value)
+const source = computed(() => tab.value === 'wishlist' ? wishes.value : tab.value === 'duplicates' ? duplicates.value : tab.value === 'sale' ? entries.value.filter(entry => activeListings.value.some(listing => listing.entryId === entry.id)) : tab.value === 'trade' ? entries.value.filter((entry) => entry.forTrade) : entries.value)
 const sets = computed(() => [...new Map(source.value.filter((entry) => entry.setId).map((entry) => [entry.setId, entry.setName])).entries()])
 const visible = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -92,7 +95,8 @@ async function manage(entry) {
   selected.value = entry
   dialogError.value = ''
   confirmingRemoval.value = false
-  Object.assign(form, { quantity: entry.quantity ?? 1, variant: entry.variant ?? 'normal', language: entry.language ?? 'English', condition: entry.condition ?? 'Near Mint', forTrade: entry.forTrade ?? false })
+  Object.assign(form, { quantity: entry.quantity ?? 1, variant: entry.variant ?? 'normal', language: entry.language ?? 'English', condition: entry.condition ?? 'Near Mint', forTrade: entry.forTrade ?? false, tradeQuantity: tradeQuantity(entry) })
+  wishForm.value = { variant: entry.variant ?? '', language: entry.language ?? '', minimumCondition: entry.minimumCondition ?? 'Damaged' }
   await nextTick()
   dialog.value.showModal()
 }
@@ -101,8 +105,9 @@ async function save() {
   saving.value = true
   dialogError.value = ''
   try {
-    const values = { ...form }
-    await updateEntry(selected.value.id, values)
+    const values = tab.value === 'wishlist' ? { ...wishForm.value } : { ...form, tradeQuantity: form.forTrade ? form.tradeQuantity : 0 }
+    if (tab.value === 'wishlist') await updateWishlistEntry(selected.value.id, values)
+    else await updateEntry(selected.value.id, values)
     Object.assign(selected.value, values)
     dialog.value.close()
     message.value = 'Card updated.'
@@ -153,13 +158,13 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
       <section aria-label="Collection overview" class="grid gap-6 sm:grid-cols-3">
         <div class="rounded-2xl bg-panel p-6"><p class="text-xs font-bold text-[#b4becc]">CARDS IN COLLECTION</p><p class="display-font my-1.5 text-[32px] font-bold text-apricot">{{ loading ? '—' : quantity }}</p><p class="text-[13px] text-[#b4becc]">Your own cards</p></div>
         <div class="rounded-2xl bg-panel p-6"><p class="text-xs font-bold text-[#b4becc]">ESTIMATED VALUE</p><p class="display-font my-1.5 break-words text-[32px] font-bold text-lilac">{{ loading ? '—' : !entries.length ? money.format(0) : priced.length ? money.format(totalValue) : 'Unavailable' }}</p><p class="text-[13px] text-[#b4becc]">{{ !loading && priced.length < entries.length ? 'Partial estimate · some prices unavailable' : 'Indicative market value' }}</p></div>
-        <div class="rounded-2xl bg-panel p-6"><p class="text-xs font-bold text-[#b4becc]">READY TO TRADE</p><p class="display-font my-1.5 text-[32px] font-bold text-mint">{{ loading ? '—' : `${trades} cards` }}</p><p class="text-[13px] text-[#b4becc]">Find your next trade</p></div>
+        <div class="rounded-2xl bg-panel p-6"><p class="text-xs font-bold text-[#b4becc]">READY TO TRADE</p><p class="display-font my-1.5 text-[32px] font-bold text-mint">{{ loading ? '—' : `${trades} cards` }}</p><RouterLink to="/trading" class="text-[13px] text-apricot underline">Find your next trade →</RouterLink></div>
       </section>
       <p v-if="warning" role="status" class="text-sm text-apricot">{{ warning }} <button class="underline" @click="load">Retry</button></p>
       <p v-if="message" role="status" class="text-sm text-mint">{{ message }}</p>
       <section aria-label="Your cards" class="flex flex-col gap-5">
         <div class="flex flex-wrap gap-3" aria-label="Filter collection">
-          <button v-for="item in [{ id: 'all', label: 'All cards', count: quantity }, { id: 'trade', label: 'For trade', count: trades }, { id: 'sale', label: 'For sale', count: saleQuantity }, { id: 'wishlist', label: 'Wishlist', count: wishes.length }]" :key="item.id" type="button" :aria-pressed="tab === item.id" class="rounded-[10px] border px-5 py-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot" :class="tab === item.id ? 'border-apricot bg-apricot text-ink' : 'border-[#3b4a5d] bg-[#222e3d] text-linen hover:border-apricot'" @click="changeTab(item.id)">{{ item.label }} · {{ loading ? '—' : item.count }}</button>
+          <button v-for="item in [{ id: 'all', label: 'All cards', count: quantity }, { id: 'trade', label: 'For trade', count: trades }, { id: 'sale', label: 'For sale', count: saleQuantity }, { id: 'wishlist', label: 'Wishlist', count: wishes.length }, { id: 'duplicates', label: 'Multiple copies', count: duplicates.length }]" :key="item.id" type="button" :aria-pressed="tab === item.id" class="rounded-[10px] border px-5 py-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot" :class="tab === item.id ? 'border-apricot bg-apricot text-ink' : 'border-[#3b4a5d] bg-[#222e3d] text-linen hover:border-apricot'" @click="changeTab(item.id)">{{ item.label }} · {{ loading ? '—' : item.count }}</button>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,680fr)_252fr_348fr]">
           <input v-model="search" aria-label="Search your collection" placeholder="Search your collection…" type="search" class="min-h-12 min-w-0 rounded-[10px] border border-[#3b4a5d] bg-[#222e3d] px-4 text-sm focus-visible:outline-2 focus-visible:outline-apricot" />
@@ -169,7 +174,7 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
         <p v-if="loading" role="status" class="py-12 text-center text-[#b4becc]">Loading your collection…</p>
         <div v-else-if="visible.length" class="grid grid-cols-1 gap-x-[23px] gap-y-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5"><CollectionCard v-for="entry in visible" :key="entry.id" :entry="entry" :price="tab === 'sale' ? `Listed at ${formatMoney(activeListings.find(listing => listing.entryId === entry.id).priceCents)} each` : priceLabel(entry)" :wishlist="tab === 'wishlist'" @manage="manage" /></div>
         <div v-else class="rounded-2xl border border-[#3b4a5d] bg-panel px-6 py-14 text-center">
-          <h2 class="display-font text-xl font-bold">{{ tab === 'sale' ? 'No listings yet' : search || set ? 'No matching cards' : tab === 'wishlist' ? 'Your wishlist is empty' : tab === 'trade' ? 'No cards marked for trade' : 'Your collection starts here' }}</h2>
+          <h2 class="display-font text-xl font-bold">{{ tab === 'sale' ? 'No listings yet' : search || set ? 'No matching cards' : tab === 'duplicates' ? 'No entries with multiple copies' : tab === 'wishlist' ? 'Your wishlist is empty' : tab === 'trade' ? 'No cards marked for trade' : 'Your collection starts here' }}</h2>
           <p class="mx-auto mt-3 max-w-md text-sm leading-6 text-[#b4becc]">{{ tab === 'sale' ? 'Manage a card in your collection to create a sale listing.' : search || set ? 'Try another search or choose a different set.' : tab === 'trade' ? 'Manage a card in your collection to mark it for trade.' : 'Explore the catalogue and save the cards you own or want to collect.' }}</p>
           <RouterLink v-if="tab === 'all' || tab === 'wishlist'" to="/" class="mt-5 inline-block rounded-[10px] bg-apricot px-5 py-3 text-sm font-bold text-ink">Find cards →</RouterLink>
         </div>
@@ -186,9 +191,11 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
           <label class="text-sm">Variant<select v-model="form.variant" :disabled="!!selectedListing" class="mt-2 min-h-12 w-full rounded-lg border border-[#3b4a5d] bg-ink px-3"><option v-for="variant in variantOptions" :key="variant">{{ variant }}</option></select></label>
           <label class="text-sm">Language<select v-model="form.language" :disabled="!!selectedListing" class="mt-2 min-h-12 w-full rounded-lg border border-[#3b4a5d] bg-ink px-3"><option v-for="language in languages" :key="language">{{ language }}</option></select></label>
           <label class="text-sm">Condition<select v-model="form.condition" :disabled="!!selectedListing" class="mt-2 min-h-12 w-full rounded-lg border border-[#3b4a5d] bg-ink px-3"><option v-for="condition in conditions" :key="condition">{{ condition }}</option></select></label>
-          <label class="flex items-center gap-3 py-2 sm:col-span-2"><input v-model="form.forTrade" type="checkbox" class="h-5 w-5 accent-apricot" /> Available for trade</label>
+          <label class="flex items-center gap-3 py-2 sm:col-span-2"><input v-model="form.forTrade" type="checkbox" class="h-5 w-5 accent-apricot" @change="form.tradeQuantity = form.forTrade ? Math.max(1, form.tradeQuantity) : 0" /> Available for trade</label>
+          <label v-if="form.forTrade" class="text-sm sm:col-span-2">Copies for trade<input v-model.number="form.tradeQuantity" type="number" required min="1" :max="form.quantity" class="market-field mt-2" /><span class="mt-2 block text-xs text-[#b4becc]">Keep {{ Math.max(0, form.quantity - form.tradeQuantity) }} of {{ form.quantity }} copies. Copies in active sale listings are excluded from matches.</span></label>
           <button :disabled="saving" class="rounded-lg bg-apricot px-5 py-3 font-bold text-ink disabled:opacity-50 sm:col-span-2" type="submit">{{ saving ? 'Saving…' : 'Save changes' }}</button>
         </form>
+        <form v-else class="mt-6" @submit.prevent="save"><WishlistPreferences v-model="wishForm" /><button :disabled="saving" type="submit" class="market-button mt-4 disabled:opacity-50">{{ saving ? 'Saving…' : 'Save preferences' }}</button></form>
         <p v-if="dialogError" role="alert" class="mt-4 text-sm text-red-200">{{ dialogError }}</p>
         <div class="mt-6 border-t border-white/10 pt-4">
           <RouterLink v-if="tab !== 'wishlist'" :to="selectedListing ? `/marketplace/${selectedListing.id}/edit` : `/marketplace/create?entry=${selected.id}`" class="market-button mb-4 inline-block">{{ selectedListing ? 'Edit sale listing' : 'Create sale listing' }}</RouterLink>

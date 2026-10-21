@@ -5,6 +5,8 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 
 initializeApp()
 
+Object.assign(exports, require('./trading'))
+
 exports.createUserAccount = onCall(async (request) => {
   if (!request.auth?.token?.admin) {
     throw new HttpsError('permission-denied', 'Only administrators can create user accounts.')

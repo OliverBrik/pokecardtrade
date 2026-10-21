@@ -10,7 +10,7 @@ defineProps({
       { label: 'Explore', to: '/' },
       { label: 'My collection', to: '/my-collection' },
       { label: 'Marketplace', to: '/marketplace' },
-      { label: 'Trading', to: null },
+      { label: 'Trading', to: '/trading' },
     ],
   },
   messagesTo: { type: [String, Object], default: '/messages' },
