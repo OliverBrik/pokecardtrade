@@ -27,7 +27,8 @@ function cardSummary(card) {
 }
 
 function priceOrNull(value) {
-  return Number.isFinite(value) && value >= 0 ? value : null
+  // Cardmarket uses zero for some unavailable variant prices; it is not a valuation.
+  return Number.isFinite(value) && value > 0 ? value : null
 }
 
 function cardmarketPrices(market) {

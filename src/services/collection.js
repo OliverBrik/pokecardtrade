@@ -71,8 +71,16 @@ export function removeEntry(id, kind = 'collection') {
 
 export function entryPrice(card, variant) {
   if (!card) return null
-  if (variant === 'normal') return card.prices?.trend ?? null
-  // The API groups holo and reverse prices; other printings have no comparable estimate.
-  if (['holo', 'reverse'].includes(variant)) return card.prices?.trendHolo ?? null
+  const positive = value => Number.isFinite(value) && value > 0 ? value : null
+  if (variant === 'normal') return positive(card.prices?.trend)
+  if (['holo', 'reverse'].includes(variant)) {
+    const holoPrice = positive(card.prices?.trendHolo)
+    if (holoPrice !== null) return holoPrice
+    // Holo-only cards (e.g. ex) use the base product's price in Cardmarket.
+    // Never use the base price for reverse or for cards with competing printings.
+    const holoOnly = card.variants?.holo === true
+      && !Object.entries(card.variants).some(([name, available]) => name !== 'holo' && available === true)
+    if (variant === 'holo' && holoOnly) return positive(card.prices?.trend)
+  }
   return null
 }
