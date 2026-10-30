@@ -14,6 +14,7 @@ function waitforAuthState() {
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/demo', name: 'demo', component: () => import('../views/DemoView.vue') },
     { path: '/goals', name: 'goals', component: () => import('../views/GoalsView.vue'), meta: { requiresAuth: true } },
     { path: '/trading', name: 'trading', component: () => import('../views/TradingView.vue'), meta: { requiresAuth: true } },
     { path: '/collectors/:uid', name: 'public-profile', component: () => import('../views/PublicProfileView.vue') },

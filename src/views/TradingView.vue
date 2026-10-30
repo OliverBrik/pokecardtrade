@@ -136,6 +136,7 @@ onBeforeUnmount(() => { disposed = true; ++searchVersion; ++loadVersion; stopTra
     </header>
 
     <p v-if="error" role="alert" class="rounded-xl border border-red-200/30 bg-panel p-4 text-sm text-red-200">{{ error }} <button :disabled="loading || searching" class="ml-2 underline disabled:opacity-50" @click="load">Try again</button></p>
+    <RouterLink v-if="error" to="/demo" class="inline-block text-sm text-apricot underline">Try the isolated trading demo while matching is unavailable →</RouterLink>
     <p v-if="notice" role="status" class="rounded-xl bg-mint/10 p-4 text-sm text-mint">{{ notice }}</p>
     <section v-if="goalId" aria-label="Selected collection goal" class="rounded-2xl border border-mint/30 bg-panel p-5">
       <template v-if="goalContext"><h2 class="display-font text-xl font-bold">Complete {{ goalContext.goal.setName }}</h2><p class="mt-2 text-sm text-linen/65">{{ goalContext.progress.collected }} / {{ goalContext.progress.total }} collected · {{ goalContext.progress.missing.length }} missing. Matches below show cards that fill gaps in this goal, ranked by unique card numbers.</p><p class="mt-2 text-xs text-linen/55">Add missing cards to your wishlist first. Matching still respects your existing wishlist preferences and both collectors’ consent.</p></template>

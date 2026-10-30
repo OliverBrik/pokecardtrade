@@ -1,5 +1,14 @@
 # pokecardtrade
 
+## Submission demo and external availability
+
+- `/demo` is a public, interactive, explicitly fictional trade walkthrough: set goal, mutual match, proposal, acceptance, confirmation and local demo collection update. It never writes to Firebase and never sends messages to real people. It is a demonstration, not proof of a deployed two-user trade.
+- During a TCGdex outage, Explore/search, card saving and Goals can use bundled official TCGdex metadata for **151 (207 cards)** and **Obsidian Flames (230 cards)**. Complete checklists are included; other sets/cards may be unavailable. The source commit and snapshot date are recorded in `src/data/catalogue-snapshot.js`; its MIT license is included alongside it. Regenerate with `node scripts/build-catalogue-snapshot.mjs` when the source is accessible.
+- Successful API responses are cached in browser local storage for up to seven days and can be used when a later request fails. The visible limited-catalogue banner indicates fallback use. Bundled metadata has no prices; cached prices are historical estimates, not live quotations. Images still depend on the remote image CDN.
+- Saved collection documents can display without waiting for price requests. Firebase Authentication and Firestore are still required for real accounts, saving, listings and goals. Trading requires the separate Functions deployment described below; the last attempt was blocked by the CLI account's missing `iam.serviceAccounts.ActAs` permission.
+
+For an API-independent presentation, open `/demo`. For the real feature flow, sign in, open Goals, choose 151 or Obsidian Flames, save a goal and add missing cards to the wishlist. Do not describe the demo as a completed live trade or the bundled catalogue as current market-price data.
+
 ## Collection goals
 
 `/goals` lets signed-in collectors keep up to ten private set goals. Goals are stored on the owner's private `profiles/{uid}` document as `collectionGoals`, using the existing owner access model; they are never copied to `publicProfiles`. No new rules or Cloud Functions deployment is required for this feature when the repository's current profile/wishlist rules are deployed.

@@ -115,25 +115,8 @@
           </section>
 
           <section class="rounded-2xl border border-white/10 bg-panel/85 p-6">
-            <h2 class="text-lg font-bold text-linen">Groups and interests</h2>
-            <div class="mt-4 space-y-3 text-sm">
-              <p class="font-semibold text-lilac">Pokémon Denmark</p>
-              <p class="font-semibold text-lilac">Charizard collectors</p>
-              <p class="text-apricot">Find groups →</p>
-            </div>
-          </section>
-
-          <section class="rounded-2xl border border-white/10 bg-panel/85 p-6">
             <h2 class="text-lg font-bold text-linen">Visible only to you</h2>
             <div class="mt-4 space-y-2 text-sm">
-              <div class="flex min-h-12 w-full items-center justify-between gap-4 rounded-lg bg-ink/40 px-3 py-3 text-left text-linen/65">
-                <span>Account and security</span>
-                <span aria-hidden="true" class="shrink-0 text-linen/40">→</span>
-              </div>
-              <div class="flex min-h-12 w-full items-center justify-between gap-4 rounded-lg bg-ink/40 px-3 py-3 text-left text-linen/65">
-                <span>Notifications</span>
-                <span aria-hidden="true" class="shrink-0 text-linen/40">→</span>
-              </div>
               <button type="button" :aria-expanded="isEditing" aria-controls="profile-visibility" class="flex min-h-12 w-full items-center justify-between gap-4 rounded-lg bg-ink/40 px-3 py-3 text-left text-linen/65 transition-colors hover:bg-ink/60 hover:text-linen focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot" @click="openEditor('privacy')"><span>Profile visibility and privacy</span><span aria-hidden="true" class="shrink-0 text-linen/40">→</span></button>
               <p class="px-3 pt-2 text-xs leading-5 text-linen/40">Your address and contact details are not shown publicly.</p>
             </div>

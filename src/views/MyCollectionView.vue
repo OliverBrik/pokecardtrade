@@ -81,6 +81,7 @@ async function load() {
     entries.value = owned
     wishes.value = wishlist
     listings.value = sales
+    loading.value = false // Saved cards do not depend on the external pricing service.
     const ids = [...new Set([...owned, ...wishlist].map((entry) => entry.cardId))]
     const results = await Promise.allSettled(ids.map((id) => loadCardDetails(id, current.signal)))
     if (disposed || current.signal.aborted) return

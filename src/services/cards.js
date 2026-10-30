@@ -1,19 +1,42 @@
 const API_URL = 'https://api.tcgdex.net/v2/en'
+let unavailableUntil = 0
+
+function reportOffline(source) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('kardvia:catalogue-offline', { detail: { source } }))
+}
 
 async function request(path, signal) {
-  const response = await fetch(`${API_URL}${path}`, { signal })
-
-  if (!response.ok) {
-    const error = new Error(
-      response.status === 404
-        ? 'Card not found.'
-        : `Could not load card data (HTTP ${response.status}).`,
-    )
-    error.status = response.status
-    throw error
+  let failure
+  try {
+    if (Date.now() < unavailableUntil) throw new Error('Catalogue temporarily unavailable.')
+    const timeout = AbortSignal.timeout(6000)
+    const response = await fetch(`${API_URL}${path}`, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout })
+    if (!response.ok) {
+      const error = new Error(response.status === 404 ? 'Card or catalogue endpoint unavailable.' : `Could not load card data (HTTP ${response.status}).`)
+      error.status = response.status
+      throw error
+    }
+    const data = await response.json()
+    try { if (typeof window !== 'undefined') window.localStorage.setItem(`kardvia:catalogue:v1:${path}`, JSON.stringify({ savedAt: Date.now(), data })) } catch { /* Storage may be full or disabled. */ }
+    return data
+  } catch (cause) {
+    if (signal?.aborted) throw cause
+    failure = cause
+    // Stop an outage causing hundreds of requests when opening a collection.
+    if (!cause.status || cause.status >= 500 || cause.status === 429) unavailableUntil = Date.now() + 15000
   }
-
-  return response.json()
+  try {
+    const cached = typeof window !== 'undefined' ? JSON.parse(window.localStorage.getItem(`kardvia:catalogue:v1:${path}`)) : null
+    if (cached && Date.now() - cached.savedAt < 7 * 86400000) {
+      unavailableUntil = Date.now() + 15000
+      reportOffline('cache')
+      return Array.isArray(cached.data) ? cached.data.map(item => typeof item === 'object' ? { ...item, _offline: true } : item) : { ...cached.data, _offline: true }
+    }
+  } catch { /* Continue to the bundled catalogue. */ }
+  const { offlineResponse } = await import('./offline-catalogue.js')
+  const fallback = offlineResponse(path)
+  if (fallback !== null) { unavailableUntil = Date.now() + 15000; reportOffline('snapshot'); return fallback }
+  throw failure
 }
 
 function cardSummary(card) {
@@ -21,6 +44,7 @@ function cardSummary(card) {
     id: card.id,
     name: card.name,
     localId: card.localId,
+    offline: card._offline === true,
     image: card.image ? `${card.image}/high.webp` : null,
     thumbnail: card.image ? `${card.image}/low.webp` : null,
   }
@@ -113,7 +137,7 @@ export async function getSet(setId, { signal } = {}) {
   if (!Array.isArray(set.cards) || !set.cards.length || set.id !== setId) throw new Error('This set does not have a usable card checklist yet.')
   const cards = [...new Map(set.cards.map(card => [card.id, cardSummary(card)])).values()]
   if (set.cardCount?.total !== cards.length) throw new Error('The set checklist is incomplete. Please try again later.')
-  return { id: set.id, name: set.name, cards }
+  return { id: set.id, name: set.name, cards, offline: set._offline === true }
 }
 
 export function getRarities({ signal } = {}) {
