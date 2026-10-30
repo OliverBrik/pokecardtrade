@@ -1,11 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { auth } from '../firebase.js';
-import ExploreView from '../views/ExploreView.vue'
-import LoginView from '../views/LoginView.vue'
-import adminView from '../views/adminView.vue'
-import ProfileView from '../views/ProfileView.vue'
-import MyCollectionView from '../views/MyCollectionView.vue'
 
 function waitforAuthState() {
   return new Promise((resolve) => {
@@ -29,29 +24,29 @@ const router = createRouter({
     {
       path: '/my-collection',
       name: 'my-collection',
-      component: MyCollectionView,
+      component: () => import('../views/MyCollectionView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/',
       name: 'explore',
-      component: ExploreView,
+      component: () => import('../views/ExploreView.vue'),
     },
         {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: () => import('../views/LoginView.vue'),
     },
       {
       path: '/admin',
       name: 'admin',
-      component: adminView, 
+      component: () => import('../views/adminView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
       {
         path: '/profile',
         name: 'profile',
-        component: ProfileView,
+        component: () => import('../views/ProfileView.vue'),
         meta: { requiresAuth: true },
       },
   ],

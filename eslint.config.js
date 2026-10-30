@@ -22,6 +22,7 @@ export default defineConfig([
 
   js.configs.recommended,
   { files: ['tests/**/*.mjs'], languageOptions: { globals: globals.node } },
+  { files: ['scripts/**/*.mjs', 'vite.config.js'], languageOptions: { globals: globals.node } },
   { files: ['functions/**/*.js'], languageOptions: { globals: globals.node } },
   ...pluginVue.configs['flat/essential'],
 

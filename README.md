@@ -1,5 +1,17 @@
 # pokecardtrade
 
+## Builds and Hosting deployment
+
+Local development reads the root `.env` with the six `VITE_FIREBASE_*` values used in `src/firebase.js`. Production builds validate that all six are present and the project matches `.firebaserc`.
+
+GitHub Hosting workflows use Node 22, run `npm ci`, `npm run lint:check` and `npm test`, then run `npm run config:hosting` before building. This downloads the project's public web configuration from its Firebase Hosting `/__/firebase/init.json` endpoint and writes an ignored `.env.production.local`. It does not download server credentials or change the local `.env`. Missing, unavailable or mismatched configuration stops deployment. The existing Hosting service-account secret is still required by the deployment action.
+
+To reproduce the production configuration locally, run `npm run config:hosting` followed by `npm run build`. Remove `.env.production.local` when you want production builds to use only your root `.env` again. Do not commit environment files or `.firebase` deploy caches.
+
+These workflows deploy Hosting only. Firestore rules, Storage rules and Cloud Functions need separate deployment with an authorized account. Compare the active rules with the repository before deploying: changes made directly in the Firebase console are not automatically saved to Git.
+
+The root npm override pins Firestore's Node-only `@grpc/grpc-js` dependency to patched version 1.14.7 because Firebase 12.19.0 still requests the old 1.9 series. Remove the override when Firebase requests a patched version itself. This does not update or audit the separate `functions/` dependency tree.
+
 ## Marketplace
 
 - `/marketplace`: active listings, filters and pagination; `?tab=mine` shows your own listings, including sold and withdrawn entries. Relisting a collection entry reuses its listing record.

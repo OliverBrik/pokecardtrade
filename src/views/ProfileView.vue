@@ -180,11 +180,15 @@ async function openEditor(section = 'profile') {
 }
 const memberSince = computed(() => profile.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) || 'recently')
 const initials = computed(() => profile.displayName.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'P')
-const isAdminAccount = computed(() => auth.currentUser?.email?.toLowerCase() === 'admin@example.dk')
+const isAdminAccount = ref(false)
 
 const loadProfile = async () => {
   if (!auth.currentUser) return
-  const snapshot = await getDoc(doc(db, 'profiles', auth.currentUser.uid))
+  const [snapshot, token] = await Promise.all([
+    getDoc(doc(db, 'profiles', auth.currentUser.uid)),
+    auth.currentUser.getIdTokenResult(),
+  ])
+  isAdminAccount.value = token.claims.admin === true
   if (snapshot.exists()) Object.assign(profile, snapshot.data())
   Object.assign(editForm, profile)
   const published = await getPublicProfile(auth.currentUser.uid)

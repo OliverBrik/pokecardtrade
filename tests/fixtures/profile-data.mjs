@@ -1,4 +1,4 @@
-export const auth = { currentUser: { uid: 'test-collector', email: 'fixture@example.test' } }
+export const auth = { currentUser: { uid: 'test-collector', email: 'fixture@example.test', getIdTokenResult: async () => ({ claims: {} }) } }
 export const db = {}
 export const doc = () => ({})
 export const getDoc = async () => ({ exists: () => true, data: () => ({ displayName: 'Test collector', location: 'Copenhagen', bio: 'Synthetic profile for checking visibility controls.' }) })
