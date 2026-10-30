@@ -48,8 +48,9 @@ const snapshot=path=>({exists:()=>records.has(path),data:()=>records.get(path)})
 const getDoc=async target=>snapshot(target.path);
 const conditions=['Near Mint','Lightly Played','Moderately Played','Heavily Played','Damaged'];
 const languages=['English','Japanese'];
-const listEntries=async()=>owned;
+const listEntries=async()=>[...owned,...[...records].filter(([path])=>path.startsWith('profiles/alice/collection/')).map(([path,entry])=>({...entry,id:path.split('/').at(-1)}))];
 const getSet=async id=>({id,name:'Test set',cards:catalogueCards});
+const getCard=async id=>({...catalogueCards.find(card=>card.id===id),variants:{normal:true,holo:true,reverse:false}});
 const serverTimestamp=()=>123;
 const runTransaction=async(_db,callback)=>{
   const writes=[];
@@ -110,6 +111,52 @@ test('partial bulk failure reports completed work and a retry safely completes t
   await assert.rejects(service.addGoalWishes('set'), /Added 100 cards/)
   assert.equal([...service.records.keys()].filter(path => path.includes('/wishlist/')).length, 100)
   assert.deepEqual(await service.addGoalWishes('set'), { added: 105, retained: 100 })
+})
+
+const additionValues = { quantity: 1, language: 'English', condition: 'Near Mint' }
+const requestId = '00000000-0000-4000-8000-000000000001'
+
+test('owned goal cards add together with selected variants, update progress and remain safe to retry', async () => {
+  service.reset(catalogue, [card])
+  await service.saveGoal({ id: 'set', name: 'Test set' }, goal)
+  const selection = [{ cardId: 'b', variant: 'holo' }, { cardId: 'c', variant: 'normal' }]
+  const result = await service.addGoalOwnedCards('set', selection, additionValues, requestId)
+  assert.equal(result.added, 2)
+  assert.equal(goalProgress(catalogue, result.entries, goal).collected, 3)
+  const created = result.entries.find(entry => entry.cardId === 'b')
+  assert.equal(created.variant, 'holo'); assert.equal(created.forTrade, false); assert.equal(created.tradeQuantity, 0)
+  assert.equal(created.setId, 'set')
+  const retry = await service.addGoalOwnedCards('set', selection, additionValues, requestId)
+  assert.equal(retry.added, 0); assert.equal(retry.skipped, 2)
+  assert.equal([...service.records.keys()].filter(path => path.includes('/collection/')).length, 2)
+})
+
+test('owned goal additions reject invalid selections and preferences without writing cards', async () => {
+  service.reset(catalogue)
+  await service.saveGoal({ id: 'set', name: 'Test set' }, goal)
+  const valid = [{ cardId: 'b', variant: 'normal' }]
+  for (const values of [{ ...additionValues, quantity: 0 }, { ...additionValues, quantity: 1.5 }, { ...additionValues, language: 'Japanese' }, { ...additionValues, condition: 'Damaged' }]) {
+    await assert.rejects(service.addGoalOwnedCards('set', valid, values, requestId))
+  }
+  for (const selection of [[], [valid[0], valid[0]], [{ cardId: 'other-set-card', variant: 'normal' }], [{ cardId: 'b', variant: 'reverse' }]]) {
+    await assert.rejects(service.addGoalOwnedCards('set', selection, additionValues, requestId))
+  }
+  assert.equal([...service.records.keys()].some(path => path.includes('/collection/')), false)
+})
+
+test('partial owned-card saves expose saved progress and retries add only the remaining cards', async () => {
+  const cards = Array.from({ length: 12 }, (_, index) => ({ id: String(index), name: 'Card ' + index }))
+  service.reset(cards, [], 3)
+  await service.saveGoal({ id: 'set', name: 'Test set' }, goal)
+  const selection = cards.map(card => ({ cardId: card.id, variant: 'normal' }))
+  await assert.rejects(service.addGoalOwnedCards('set', selection, additionValues, requestId), error => {
+    assert.match(error.message, /Added 10 cards/)
+    assert.equal(error.entries.length, 10)
+    return true
+  })
+  const retry = await service.addGoalOwnedCards('set', selection, additionValues, requestId)
+  assert.equal(retry.added, 2)
+  assert.equal(goalProgress(cards, retry.entries, goal).collected, 12)
 })
 
 const cardsSource = await readFile(new URL('../src/services/cards.js', import.meta.url), 'utf8')

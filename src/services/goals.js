@@ -1,6 +1,6 @@
 import { doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/firebase'
-import { getSet } from './cards'
+import { getCard, getSet } from './cards'
 import { conditions, languages, listEntries } from './collection'
 import { goalProgress } from './goal-logic'
 
@@ -81,4 +81,59 @@ export async function addGoalWishes(setId) {
     throw new Error(`Added ${added} cards before the wishlist update stopped. Retry safely; existing wishlist preferences are kept.`, { cause })
   }
   return { added, retained }
+}
+
+export async function addGoalOwnedCards(setId, selection, values, requestId) {
+  const target = profile()
+  if (!Array.isArray(selection) || !selection.length || selection.length > 100
+    || new Set(selection.map(item => item.cardId)).size !== selection.length) {
+    throw new Error('Choose between one and 100 different cards.')
+  }
+  if (!/^[a-zA-Z0-9-]{20,64}$/.test(requestId ?? '') || !Number.isInteger(values.quantity)
+    || values.quantity < 1 || values.quantity > 9999 || !languages.includes(values.language)
+    || !conditions.includes(values.condition)) throw new Error('Choose a valid quantity, language and condition.')
+  const context = await loadGoalContext(setId)
+  if (values.language !== context.goal.language
+    || conditions.indexOf(values.condition) > conditions.indexOf(context.goal.minimumCondition)) {
+    throw new Error('Choose the goal language and a condition that meets its minimum.')
+  }
+  const catalogueIds = new Set(context.catalogue.cards.map(card => card.id))
+  if (selection.some(item => !catalogueIds.has(item.cardId))) throw new Error('Choose cards from this goal’s set.')
+  const details = await Promise.all(selection.map(item => getCard(item.cardId)))
+  const records = selection.map((item, index) => {
+    const card = details[index]
+    if (card.variants?.[item.variant] !== true) throw new Error(`Choose an available variant for ${card.name}.`)
+    return { id: `goal_${requestId}_${card.id}`, cardId: card.id, name: card.name, image: card.image ?? null,
+      localId: card.localId ?? '', setId: context.goal.setId, setName: context.goal.setName,
+      quantity: values.quantity, variant: item.variant, language: values.language, condition: values.condition,
+      forTrade: false, tradeQuantity: 0 }
+  })
+  const missing = new Set(context.progress.missing.map(card => card.id))
+  const pending = records.filter(record => missing.has(record.cardId))
+  const entries = [...context.entries]
+  let added = 0
+  try {
+    // Collection rules inspect listing reservations. Keep each transaction well
+    // below Firestore's cross-document security-rule access limit.
+    for (let offset = 0; offset < pending.length; offset += 10) {
+      const chunk = pending.slice(offset, offset + 10)
+      const result = await runTransaction(db, async tx => {
+        const paths = chunk.map(record => doc(db, target.path, 'collection', record.id))
+        const snapshots = await Promise.all(paths.map(path => tx.get(path)))
+        const created = []
+        chunk.forEach(({ id, ...record }, index) => {
+          if (snapshots[index].exists()) return
+          tx.set(paths[index], { ...record, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+          created.push({ ...record, id })
+        })
+        return created
+      })
+      added += result.length; entries.push(...result)
+    }
+  } catch (cause) {
+    const error = new Error(`Added ${added} cards before saving stopped. Your saved cards are kept. Retry to add the remaining cards.`, { cause })
+    error.entries = entries
+    throw error
+  }
+  return { added, skipped: records.length - added, entries }
 }
