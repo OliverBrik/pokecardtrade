@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "config:hosting": "node scripts/prepare-hosting-env.mjs",
+    "deploy:trading": "firebase deploy --only functions:findTradeMatches,functions:sendTradeProposal,functions:respondToTrade --project pokecardtrade-8cdec",
     "test": "node --test tests/*.test.mjs",
     "lint:check": "oxlint . && eslint .",
     "dev": "vite",

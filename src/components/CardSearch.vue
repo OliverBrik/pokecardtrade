@@ -71,7 +71,7 @@ async function loadCards(targetPage = 1, showFeatured = false) {
       : summaries[index].name ? [{ ...summaries[index], prices: null, detailsFailed: true }] : [])
     const failures = results.filter((result) => result.status === 'rejected').length
     if (failures) warning.value = 'Some card details could not be loaded. Please retry.'
-    if (summaries.length && !cards.value.length) throw new Error('Could not load cards. Please try again.')
+    if (summaries.length && !cards.value.length) throw new Error('The card catalogue could not be reached. Please try again shortly. Your saved collection has not been removed.')
     hasNext.value = !showFeatured && summaries.length === 10
   } catch (cause) {
     if (!current.signal.aborted) error.value = cause.message || 'Could not load cards. Please try again.'

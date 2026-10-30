@@ -20,6 +20,14 @@ To reproduce the production configuration locally, run `npm run config:hosting` 
 
 These workflows deploy Hosting only. Firestore rules, Storage rules and Cloud Functions need separate deployment with an authorized account. Compare the active rules with the repository before deploying: changes made directly in the Firebase console are not automatically saved to Git.
 
+### Trading backend deployment
+
+Hosting success does not mean the trading server is deployed. The frontend calls `findTradeMatches`, `sendTradeProposal` and `respondToTrade` in `us-central1` on `pokecardtrade-8cdec`. HTTP 404 at these URLs means the frontend cannot reach these functions at its configured location.
+
+With Node 22, an installed Firebase CLI and an account authorized to deploy Cloud Functions, run `npm ci --prefix functions`, `npm run test:trading`, then `npm run deploy:trading`. This deploys only the three trading callables, not the admin account-creation function or security rules. The project must have the billing/API setup required by Cloud Functions. After deployment, verify that an unauthenticated callable request returns an authentication error instead of 404, then test matching and a full proposal with two opted-in test accounts.
+
+Hosting HTML and SPA routes revalidate on navigation. Hashed `/assets/` files retain long-lived caching. A tab that was already open before a deployment still needs a reload to run the new JavaScript.
+
 The root npm override pins Firestore's Node-only `@grpc/grpc-js` dependency to patched version 1.14.7 because Firebase 12.19.0 still requests the old 1.9 series. Remove the override when Firebase requests a patched version itself. This does not update or audit the separate `functions/` dependency tree.
 
 ## Marketplace
