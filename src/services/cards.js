@@ -105,6 +105,16 @@ export function getSets({ signal } = {}) {
   return request('/sets', signal)
 }
 
+export async function getSet(setId, { signal } = {}) {
+  if (typeof setId !== 'string' || !/^[a-zA-Z0-9.-]{1,80}$/.test(setId)) throw new TypeError('Choose a valid set.')
+  const timeout = AbortSignal.timeout(15000)
+  const set = await request(`/sets/${encodeURIComponent(setId)}`, signal ? AbortSignal.any([signal, timeout]) : timeout)
+  if (!Array.isArray(set.cards) || !set.cards.length || set.id !== setId) throw new Error('This set does not have a usable card checklist yet.')
+  const cards = [...new Map(set.cards.map(card => [card.id, cardSummary(card)])).values()]
+  if (set.cardCount?.total !== cards.length) throw new Error('The set checklist is incomplete. Please try again later.')
+  return { id: set.id, name: set.name, cards }
+}
+
 export function getRarities({ signal } = {}) {
   return request('/rarities', signal)
 }

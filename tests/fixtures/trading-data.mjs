@@ -1,5 +1,6 @@
 // Synthetic data only. No credentials, real profiles or database writes.
 export const auth = { currentUser: { uid: 'alice' } }
+export const loadGoalContext = async () => { throw new Error('No collection goal in this fixture.') }
 const card = { entryId: 'charizard', id: 'charizard', cardId: 'sv03-223', name: 'Charizard ex', image: null, setName: 'Obsidian Flames', localId: '223', variant: 'holo', language: 'English', condition: 'Near Mint', quantity: 2, tradeQuantity: 1, forTrade: true }
 const other = { ...card, entryId: 'pikachu', id: 'pikachu', cardId: 'sv03-027', name: 'Pikachu', localId: '027', quantity: 3, condition: 'Lightly Played' }
 const match = { uid: 'bob', displayName: 'Bob · Test collector', location: 'Copenhagen', give: [{ ...card, quantity: 1 }], receive: [other] }

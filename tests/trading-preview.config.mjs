@@ -9,7 +9,7 @@ export default defineConfig({
   define: { __TRADING_UI_FIXTURE__: 'true' },
   optimizeDeps: { entries: ['tests/trading-preview.html'] },
   resolve: { alias: [
-    ...['@/firebase', '@/services/collection', '@/services/trading', '@/services/profiles'].map(find => ({ find, replacement: path('./fixtures/trading-data.mjs') })),
+    ...['@/firebase', '@/services/collection', '@/services/trading', '@/services/profiles', '@/services/goals'].map(find => ({ find, replacement: path('./fixtures/trading-data.mjs') })),
     { find: '@', replacement: path('../src') },
   ] },
 })

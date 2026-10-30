@@ -150,6 +150,7 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
       <h1 class="display-font text-[32px] leading-[1.45] font-bold tracking-[-0.8px] sm:text-[40px]">My Collection</h1>
       <p class="text-base leading-relaxed">Keep track of your cards, their value and what you want to trade.</p>
       <RouterLink to="/" class="mt-1 rounded-[10px] bg-apricot px-5 py-3 text-sm font-bold text-ink hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-apricot">+ Find and add cards</RouterLink>
+      <RouterLink to="/goals" class="mt-3 text-sm font-semibold text-mint underline">Complete a set with collection goals →</RouterLink>
     </header>
     <p v-if="pendingError" role="alert" class="text-sm text-red-200">{{ pendingError }}</p>
 

@@ -1,5 +1,15 @@
 # pokecardtrade
 
+## Collection goals
+
+`/goals` lets signed-in collectors keep up to ten private set goals. Goals are stored on the owner's private `profiles/{uid}` document as `collectionGoals`, using the existing owner access model; they are never copied to `publicProfiles`. No new rules or Cloud Functions deployment is required for this feature when the repository's current profile/wishlist rules are deployed.
+
+Progress counts unique catalogue card IDs, including secret cards, with one copy in any variant. It respects the chosen language and minimum condition and is not a variant master-set tracker. The checklist uses English TCGdex set identities; regional sets are not mapped automatically. An incomplete or unavailable catalogue is shown as an error rather than a completion percentage.
+
+Adding missing cards to the wishlist preserves existing entries and their preferences. Large updates run in chunks of 100; partial failures report the completed count and can be retried. Removing a goal keeps collection and wishlist entries. Wishlist entries are not automatically deleted when cards are acquired.
+
+`/trading?goal=SET_ID` filters the existing consented, reciprocal wishlist matches to cards still missing from that goal. Ranking is by distinct gaps filled among the collectors loaded so far; use “Check more collectors” to continue pagination. Proposal previews account for outgoing last copies as well as incoming cards. They are estimates, do not reserve stock and do not automatically transfer inventory. Both collectors still update their collections after the physical exchange.
+
 ## Builds and Hosting deployment
 
 Local development reads the root `.env` with the six `VITE_FIREBASE_*` values used in `src/firebase.js`. Production builds validate that all six are present and the project matches `.firebaserc`.

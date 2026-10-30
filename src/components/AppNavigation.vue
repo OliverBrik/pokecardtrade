@@ -9,6 +9,7 @@ defineProps({
     default: () => [
       { label: 'Explore', to: '/' },
       { label: 'My collection', to: '/my-collection' },
+      { label: 'Goals', to: '/goals' },
       { label: 'Marketplace', to: '/marketplace' },
       { label: 'Trading', to: '/trading' },
     ],
@@ -36,7 +37,7 @@ function closeMenu(event) {
   <header class="bg-ink text-linen" @keydown.esc="closeMenu">
     <nav
       aria-label="Main navigation"
-      class="mx-auto flex min-h-[86px] max-w-[1320px] flex-wrap items-center gap-x-7 px-6 py-4 sm:px-8 lg:flex-nowrap lg:px-10"
+      class="mx-auto flex min-h-[86px] max-w-[1320px] flex-wrap items-center gap-x-7 px-6 py-4 sm:px-8 lg:px-10 xl:flex-nowrap"
     >
       <RouterLink
         to="/"
@@ -54,7 +55,7 @@ function closeMenu(event) {
         :aria-expanded="menuOpen"
         :aria-controls="menuId"
         :aria-label="menuOpen ? 'Close navigation menu' : 'Open navigation menu'"
-        class="ml-auto flex h-11 w-11 items-center justify-center rounded-lg text-linen hover:bg-panel focus-visible:outline-2 focus-visible:outline-apricot lg:hidden"
+        class="ml-auto flex h-11 w-11 items-center justify-center rounded-lg text-linen hover:bg-panel focus-visible:outline-2 focus-visible:outline-apricot xl:hidden"
         @click="menuOpen = !menuOpen"
       >
         <svg aria-hidden="true" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -66,9 +67,9 @@ function closeMenu(event) {
       <div
         :id="menuId"
         :class="menuOpen ? 'flex' : 'hidden'"
-        class="w-full flex-col gap-4 pt-5 lg:flex lg:w-auto lg:flex-1 lg:flex-row lg:items-center lg:gap-7 lg:pt-0"
+        class="w-full flex-col gap-4 pt-5 xl:flex xl:w-auto xl:flex-1 xl:flex-row xl:items-center xl:gap-7 xl:pt-0"
       >
-        <ul class="flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-8">
+        <ul class="flex flex-col gap-1 xl:flex-row xl:items-center xl:gap-8">
           <li v-for="link in links" :key="link.label">
             <RouterLink
               v-if="link.to"
@@ -81,7 +82,7 @@ function closeMenu(event) {
           </li>
         </ul>
 
-        <div class="flex items-center gap-7 border-t border-linen/10 pt-4 lg:ml-auto lg:border-0 lg:pt-0">
+        <div class="flex items-center gap-7 border-t border-linen/10 pt-4 xl:ml-auto xl:border-0 xl:pt-0">
           <RouterLink
             v-if="messagesTo"
             :to="messagesTo"
