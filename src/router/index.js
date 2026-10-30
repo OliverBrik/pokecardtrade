@@ -46,7 +46,7 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: adminView, 
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
       {
         path: '/profile',
@@ -68,6 +68,10 @@ router.beforeEach(async (to) => {
 
   const tokenResult = await user.getIdTokenResult(true)
   const isAdmin = tokenResult.claims.admin === true
+
+  if (to.meta.requiresAdmin && !isAdmin) {
+    return { name: 'explore' }
+  }
 
   if (isAdmin && (to.name === 'profile' || to.name === 'login')) {
     return { name: 'admin' }
