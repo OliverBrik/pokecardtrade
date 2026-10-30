@@ -10,6 +10,7 @@ const sets = ref([]), goals = ref([]), contexts = ref({}), failures = ref({})
 const loading = ref(true), busy = ref(false), error = ref(''), notice = ref('')
 const query = ref(''), setId = ref(''), language = ref('English'), minimumCondition = ref('Damaged')
 const filter = ref('missing'), page = ref(1), confirming = ref('')
+const cardSearch = ref('')
 const selected = ref('')
 const checked = ref([]), ownedDialog = ref(null), ownedCards = ref([]), addLoading = ref(false), addError = ref(''), additionId = ref('')
 const addForm = reactive({ quantity: 1, language: 'English', condition: 'Near Mint' })
@@ -19,7 +20,10 @@ const matchingSets = computed(() => sets.value.filter(set => `${set.name} ${set.
 const checklist = computed(() => {
   if (!context.value) return []
   const missing = new Set(context.value.progress.missing.map(card => card.id))
-  return context.value.catalogue.cards.filter(card => filter.value === 'all' || missing.has(card.id))
+  const term = cardSearch.value.trim().toLowerCase()
+  const number = /^#?(\d+)(?:\/\d+)?$/.exec(term)
+  return context.value.catalogue.cards.filter(card => (filter.value === 'all' || missing.has(card.id))
+    && (!term || (number ? Number(card.localId) === Number(number[1]) : `${card.name} ${card.id}`.toLowerCase().includes(term))))
     .map(card => ({ ...card, missing: missing.has(card.id) }))
 })
 const visible = computed(() => checklist.value.slice(0, page.value * 30))
@@ -52,7 +56,7 @@ async function create() {
   try {
     const set = sets.value.find(item => item.id === setId.value)
     await saveGoal(set, { language: language.value, minimumCondition: minimumCondition.value })
-    selected.value = set.id; page.value = 1
+    selected.value = set.id; page.value = 1; cardSearch.value = ''
     await load(); notice.value = 'Collection goal saved. Your progress follows the cards in your collection.'
   } catch (cause) { error.value = cause.message || 'Could not save your goal.' }
   finally { busy.value = false }
@@ -77,7 +81,7 @@ async function remove(id) {
 function select(goal) {
   if (busy.value) return
   checked.value = []
-  selected.value = goal.setId; page.value = 1; filter.value = 'missing'; notice.value = ''
+  selected.value = goal.setId; page.value = 1; filter.value = 'missing'; notice.value = ''; cardSearch.value = ''
 }
 
 function updateProgress(entries) {
@@ -165,6 +169,8 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
       <div class="flex flex-wrap gap-3"><button :disabled="busy || !context.progress.missing.length" class="rounded-xl bg-apricot px-5 py-3 text-sm font-bold text-ink disabled:opacity-50" @click="wishlist">{{ busy ? 'Updating…' : 'Add missing cards to wishlist' }}</button><RouterLink :to="{ path: '/trading', query: { goal: context.goal.setId } }" class="rounded-xl border border-mint/50 px-5 py-3 text-sm font-bold text-mint">Find trades for this goal →</RouterLink><RouterLink to="/my-collection?tab=trade" class="rounded-xl border border-linen/20 px-5 py-3 text-sm">Choose copies to offer →</RouterLink></div>
       <p v-if="!context.progress.missing.length" role="status" class="rounded-xl bg-mint/10 p-5 text-mint">Set complete. Every card number is in your collection!</p>
       <div class="flex flex-wrap gap-3"><button v-for="item in ['missing', 'all']" :key="item" :aria-pressed="filter === item" class="rounded-lg border px-4 py-2 text-sm capitalize" :class="filter === item ? 'border-apricot text-apricot' : 'border-linen/20'" @click="filter = item; page = 1">{{ item === 'missing' ? 'Missing cards' : 'All cards' }}</button></div>
+      <div class="flex flex-wrap items-end gap-3"><label class="min-w-0 flex-1 text-sm font-semibold">Search this set<input v-model="cardSearch" type="search" placeholder="Card name or number, e.g. Pikachu or 025" class="market-field mt-2" @input="page = 1" /></label><button v-if="cardSearch" class="rounded-lg border border-linen/20 px-4 py-3 text-sm" @click="cardSearch = ''; page = 1">Clear search</button></div>
+      <p role="status" class="text-xs text-linen/60">{{ checklist.length }} {{ checklist.length === 1 ? 'card matches' : 'cards match' }}{{ cardSearch ? ' your search' : ' this filter' }}. Selected cards are kept when you search for another card.</p>
       <div class="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-linen/20 bg-panel p-4 shadow-lg">
         <span role="status" class="text-sm font-bold">{{ checked.length }} selected</span>
         <button :disabled="busy || !visible.some(card => card.missing)" class="rounded-lg border border-linen/20 px-3 py-2 text-sm disabled:opacity-50" @click="selectVisible">Select displayed missing cards</button>
@@ -176,6 +182,7 @@ onBeforeUnmount(() => { disposed = true; controller?.abort() })
         <input v-if="card.missing" v-model="checked" :value="card.id" type="checkbox" :aria-label="`Select ${card.name}, ${card.localId}`" :disabled="busy || (checked.length >= 100 && !checked.includes(card.id))" class="h-5 w-5 shrink-0 accent-apricot" />
         <img v-if="card.thumbnail" :src="card.thumbnail" :alt="card.name" loading="lazy" class="h-20 w-14 shrink-0 object-contain" /><div class="min-w-0"><p class="break-words font-bold">{{ card.name }}</p><p class="mt-1 text-xs text-linen/55">#{{ card.localId }} · {{ card.missing ? 'Missing' : 'Collected' }}</p><button v-if="card.missing" :disabled="busy" class="mt-2 inline-block text-left text-xs text-apricot underline disabled:opacity-50" @click="openOwned([card.id])">I own this card →</button></div>
       </li></ul>
+      <div v-if="!checklist.length && cardSearch" class="rounded-xl border border-dashed border-linen/20 p-6 text-center"><p class="font-bold">No cards match your search</p><p class="mt-2 text-sm text-linen/60">Try a different name or number, or switch to All cards to include cards already collected.</p></div>
       <button v-if="visible.length < checklist.length" class="rounded-xl border border-linen/20 px-5 py-3 text-sm" @click="page++">Show more cards</button>
     </section>
     <dialog ref="ownedDialog" aria-labelledby="owned-title" class="m-auto max-h-[90vh] w-[min(680px,calc(100%-32px))] overflow-y-auto rounded-2xl border border-linen/20 bg-panel p-6 text-linen backdrop:bg-black/70" @cancel="event => { if (busy || addLoading) event.preventDefault() }">
